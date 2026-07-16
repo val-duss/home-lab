@@ -30,3 +30,16 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/name: {{ include "home-lab.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{- define "home-lab.imagePullSecrets" -}}
+{{- $secrets := .Values.imagePullSecrets }}
+{{- if .Values.imageCredentials }}
+{{- $secrets = append $secrets (dict "name" (printf "%s-registry" (include "home-lab.fullname" .))) }}
+{{- end }}
+{{- if $secrets }}
+imagePullSecrets:
+{{- range $secrets }}
+  - name: {{ .name }}
+{{- end }}
+{{- end }}
+{{- end }}
