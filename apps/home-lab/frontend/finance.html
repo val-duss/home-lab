@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Finances — Home Lab</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <a href="index.html" class="back-link">&larr; Retour</a>
+    <h1>Finances</h1>
+
+    <section class="accounts-section">
+      <h2>Comptes &amp; livrets</h2>
+      <ul id="accounts-list" class="todo-list"></ul>
+      <p id="accounts-total" class="muted"></p>
+
+      <form id="account-form" class="todo-form">
+        <input type="text" id="account-name" placeholder="Nom du compte" required />
+        <select id="account-kind">
+          <option value="courant">Compte courant</option>
+          <option value="livret">Livret</option>
+        </select>
+        <input type="number" id="account-balance" placeholder="Solde (€)" step="0.01" required />
+        <button type="submit">Ajouter</button>
+      </form>
+
+      <div class="link-bank">
+        <select id="institution-select"><option value="">Charger les banques…</option></select>
+        <button id="link-bank-btn" type="button">Lier une banque</button>
+      </div>
+      <p id="link-bank-hint" class="muted">
+        Nécessite des identifiants GoCardless configurés côté serveur (voir README).
+      </p>
+    </section>
+
+    <section class="stocks-section">
+      <h2>Actions en direct</h2>
+      <ul id="stocks-list" class="todo-list"></ul>
+      <p id="stocks-total" class="muted"></p>
+
+      <form id="stock-form" class="todo-form">
+        <input type="text" id="stock-name" placeholder="Nom" required />
+        <input type="text" id="stock-ticker" placeholder="Ticker (optionnel)" />
+        <input type="number" id="stock-quantity" placeholder="Quantité" step="0.0001" required />
+        <input type="number" id="stock-purchase-price" placeholder="Prix d'achat (€)" step="0.01" required />
+        <input type="number" id="stock-current-price" placeholder="Prix actuel (€)" step="0.01" required />
+        <button type="submit">Ajouter</button>
+      </form>
+    </section>
+
+    <p id="finance-error" class="error"></p>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="session.js"></script>
+  <script src="finance.js"></script>
+</body>
+</html>
