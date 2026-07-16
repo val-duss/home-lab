@@ -16,6 +16,8 @@ spec:
       labels:
         {{- include "home-lab.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: backend
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
       {{- include "home-lab.imagePullSecrets" . | nindent 6 }}
       containers:
@@ -26,6 +28,31 @@ spec:
             - name: http
               containerPort: {{ .Values.backend.port }}
               protocol: TCP
+          env:
+            - name: ACCESS_CODE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "home-lab.fullname" . }}
+                  key: access-code
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "home-lab.fullname" . }}
+                  key: jwt-secret
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "home-lab.fullname" . }}
+                  key: google-client-id
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "home-lab.fullname" . }}
+                  key: google-client-secret
+            - name: GOOGLE_REDIRECT_URI
+              value: {{ .Values.backend.google.redirectUri | quote }}
+            - name: GOOGLE_CALENDAR_ID
+              value: {{ .Values.backend.google.calendarId | quote }}
           livenessProbe:
             httpGet:
               path: /health
@@ -41,3 +68,14 @@ spec:
             periodSeconds: 10
           resources:
             {{- toYaml .Values.backend.resources | nindent 12 }}
+          {{- if .Values.persistence.enabled }}
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+          {{- end }}
+      {{- if .Values.persistence.enabled }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "home-lab.fullname" . }}-data
+      {{- end }}

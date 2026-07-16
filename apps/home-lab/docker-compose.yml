@@ -5,6 +5,13 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - backend-data:/app/data
+    environment:
+      - ACCESS_CODE=change-me
+      - JWT_SECRET=change-this-secret-in-production
+      - GOOGLE_CLIENT_ID=
+      - GOOGLE_CLIENT_SECRET=
+      - GOOGLE_REDIRECT_URI=http://localhost:8000/calendar/oauth-callback
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
@@ -13,9 +20,15 @@ services:
       - "3000:80"
     volumes:
       - ./frontend/index.html:/usr/share/nginx/html/index.html:ro
+      - ./frontend/calendar.html:/usr/share/nginx/html/calendar.html:ro
       - ./frontend/style.css:/usr/share/nginx/html/style.css:ro
-      - ./frontend/app.js:/usr/share/nginx/html/app.js:ro
+      - ./frontend/session.js:/usr/share/nginx/html/session.js:ro
+      - ./frontend/gate.js:/usr/share/nginx/html/gate.js:ro
+      - ./frontend/calendar.js:/usr/share/nginx/html/calendar.js:ro
       - ./frontend/config.js:/usr/share/nginx/html/config.js:ro
       - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - backend
+
+volumes:
+  backend-data:

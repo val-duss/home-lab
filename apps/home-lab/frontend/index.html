@@ -7,13 +7,28 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main>
+  <main id="gate">
     <h1>Home Lab</h1>
-    <p>Application vide, prête à accueillir du contenu.</p>
-    <p>Statut backend : <span id="status">vérification…</span></p>
+    <p>Entre le code d'accès pour continuer.</p>
+    <form id="gate-form">
+      <input type="password" id="gate-code" placeholder="Code d'accès" autocomplete="off" required />
+      <button type="submit">Valider</button>
+    </form>
+    <p id="gate-error" class="error"></p>
+  </main>
+
+  <main id="portal" hidden>
+    <h1>Home Lab</h1>
+    <div class="app-grid">
+      <a class="app-card" href="calendar.html">
+        <span class="app-card-icon">📅</span>
+        <span class="app-card-name">Calendrier</span>
+      </a>
+    </div>
   </main>
 
   <script src="config.js"></script>
-  <script src="app.js"></script>
+  <script src="session.js"></script>
+  <script src="gate.js"></script>
 </body>
 </html>
