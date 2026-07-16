@@ -21,11 +21,11 @@ backend:
     pullPolicy: Always
   replicas: 1
   port: 8000
-  # Code demandé à la première connexion et clé de signature des sessions.
-  # À surcharger en prod (ArgoCD > Parameters, ou -f values-secret.yaml non commité),
-  # ne pas laisser ces valeurs par défaut telles quelles.
+  # Clé de signature des sessions. Le code PIN d'accès n'est pas configuré ici : il
+  # démarre à 000000 (changement forcé à la première connexion) et est persisté sur
+  # le PVC (/app/data/auth_state.json). À surcharger en prod (ArgoCD > Parameters,
+  # ou -f values-secret.yaml non commité), ne pas laisser cette valeur par défaut.
   auth:
-    accessCode: "change-me"
     jwtSecret: "change-this-secret-in-production"
   # Identifiants OAuth Google Calendar (voir apps/home-lab/README.md pour la procédure).
   google:

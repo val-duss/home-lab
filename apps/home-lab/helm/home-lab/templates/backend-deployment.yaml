@@ -29,11 +29,6 @@ spec:
               containerPort: {{ .Values.backend.port }}
               protocol: TCP
           env:
-            - name: ACCESS_CODE
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "home-lab.fullname" . }}
-                  key: access-code
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
