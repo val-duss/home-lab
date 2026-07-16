@@ -400,6 +400,30 @@ section h2 {
   cursor: pointer;
 }
 
+.note-content-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.note-content-row textarea {
+  flex: 1;
+}
+
+#dictate-btn {
+  padding: 0.5rem 0.75rem;
+  font-size: 1.2rem;
+  cursor: pointer;
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+
+#dictate-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .notes-list {
   list-style: none;
   padding: 0;
@@ -454,4 +478,11 @@ section h2 {
   padding: 0.4rem;
   font-size: 0.95rem;
   font-family: inherit;
+}
+
+.note-edit-labels {
+  width: 100%;
+  padding: 0.4rem;
+  font-size: 0.9rem;
+  margin-top: 0.4rem;
 }

@@ -114,13 +114,15 @@ class LinkBankRequest(BaseModel):
 
 
 class NoteCreate(BaseModel):
-    title: str
+    title: Optional[str] = None
     content: str = ""
+    labels: List[str] = []
 
 
 class NoteUpdate(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
+    labels: Optional[List[str]] = None
 
 
 def require_session(request: Request) -> None:
@@ -671,14 +673,34 @@ def serialize_note(note: models.Note) -> dict:
         "id": note.id,
         "title": note.title,
         "content": note.content,
+        "labels": [{"id": label.id, "name": label.name} for label in note.labels],
         "created_at": note.created_at.isoformat() if note.created_at else None,
         "updated_at": note.updated_at.isoformat() if note.updated_at else None,
     }
 
 
+@app.get("/notes/labels")
+def list_note_labels(db: Session = Depends(get_db), _: None = Depends(require_session)):
+    labels = (
+        db.query(models.Label)
+        .join(models.note_labels, models.Label.id == models.note_labels.c.label_id)
+        .distinct()
+        .order_by(models.Label.name)
+        .all()
+    )
+    return [{"id": label.id, "name": label.name} for label in labels]
+
+
 @app.get("/notes")
-def list_notes(db: Session = Depends(get_db), _: None = Depends(require_session)):
-    notes = db.query(models.Note).order_by(models.Note.updated_at.desc()).all()
+def list_notes(
+    label: Optional[str] = None,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_session),
+):
+    query = db.query(models.Note)
+    if label:
+        query = query.join(models.Note.labels).filter(models.Label.name == label)
+    notes = query.order_by(models.Note.updated_at.desc()).all()
     return [serialize_note(n) for n in notes]
 
 
@@ -686,10 +708,11 @@ def list_notes(db: Session = Depends(get_db), _: None = Depends(require_session)
 def create_note(
     data: NoteCreate, db: Session = Depends(get_db), _: None = Depends(require_session)
 ):
-    title = data.title.strip()
-    if not title:
-        raise HTTPException(status_code=400, detail="Titre requis")
+    title = data.title.strip() if data.title else None
+    if not title and not data.content.strip():
+        raise HTTPException(status_code=400, detail="La note ne peut pas être vide")
     note = models.Note(title=title, content=data.content)
+    note.labels = [get_or_create_label(db, name) for name in data.labels if name.strip()]
     db.add(note)
     db.commit()
     db.refresh(note)
@@ -707,12 +730,13 @@ def update_note(
     if not note:
         raise HTTPException(status_code=404, detail="Note introuvable")
     if data.title is not None:
-        title = data.title.strip()
-        if not title:
-            raise HTTPException(status_code=400, detail="Titre requis")
-        note.title = title
+        note.title = data.title.strip() or None
     if data.content is not None:
         note.content = data.content
+    if not (note.title or "").strip() and not (note.content or "").strip():
+        raise HTTPException(status_code=400, detail="La note ne peut pas être vide")
+    if data.labels is not None:
+        note.labels = [get_or_create_label(db, name) for name in data.labels if name.strip()]
     db.commit()
     db.refresh(note)
     return serialize_note(note)

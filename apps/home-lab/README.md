@@ -11,7 +11,8 @@ Portail d'accueil protégé par un code d'accès, listant plusieurs mini-applica
 - **Finances** : comptes/livrets (saisie manuelle, éditable, avec historique des soldes en
   courbe ; ou synchronisés via GoCardless Bank Account Data, solde en lecture seule) et actions
   en direct (saisie manuelle, PEA/CTO non couverts par les agrégateurs bancaires)
-- **Notes** : prise de notes rapide par sujet, copie en un clic (presse-papier)
+- **Notes** : prise de notes rapide, titre optionnel (dérivé du contenu si absent), dictée
+  vocale, labels filtrables, copie en un clic (presse-papier)
 
 Le portail affiche les applications 2 par ligne, avec une pastille sur Actualités indiquant le
 nombre d'articles du jour pas encore consultés (suivi client, `localStorage`).
@@ -51,6 +52,17 @@ résolu par le DNS du cluster) les appels API vers le backend. Et `config.js` ut
 Conséquence : peu importe l'adresse réseau utilisée pour joindre le frontend (IP LAN, IP
 Tailscale, nom DNS...), les appels API suivent automatiquement la même origine — il n'y a plus
 besoin que le backend soit lui-même joignable depuis l'extérieur du cluster.
+
+**Limite connue** : plusieurs API navigateur (Clipboard moderne pour "Copier" dans Notes, Web
+Speech API pour la dictée, redirect OAuth Google/GoCardless) exigent un **contexte sécurisé**
+(HTTPS, ou `localhost`). L'app tournant en HTTP sur IP LAN, ces fonctionnalités peuvent être
+bridées par le navigateur selon comment tu y accèdes :
+- Copier : repli automatique via `execCommand('copy')`, fonctionne en HTTP.
+- Dictée vocale : pas de repli possible, l'API elle-même est bloquée sans contexte sécurisé.
+- OAuth Google/GoCardless : contournés via `kubectl port-forward` + `localhost` (voir plus bas).
+
+Si tu utilises déjà Tailscale, `tailscale serve` peut exposer l'app en HTTPS avec un certificat
+valide sur ton nom MagicDNS — ça débloquerait la dictée vocale sans montage particulier.
 
 ### Secrets à surcharger en prod
 

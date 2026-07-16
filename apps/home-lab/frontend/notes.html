@@ -12,10 +12,16 @@
     <h1>Notes</h1>
 
     <form id="note-form" class="note-form">
-      <input type="text" id="note-title" placeholder="Sujet" required />
-      <textarea id="note-content" placeholder="Contenu" rows="3"></textarea>
+      <input type="text" id="note-title" placeholder="Sujet (optionnel)" />
+      <div class="note-content-row">
+        <textarea id="note-content" placeholder="Contenu (ou dicte à l'oral)" rows="3"></textarea>
+        <button type="button" id="dictate-btn" title="Dicter à l'oral">🎤</button>
+      </div>
+      <input type="text" id="note-labels" placeholder="Labels (séparés par des virgules)" />
       <button type="submit">Ajouter</button>
     </form>
+
+    <div id="label-filters" class="chip-row"></div>
 
     <ul id="notes-list" class="notes-list"></ul>
     <p id="notes-error" class="error"></p>
