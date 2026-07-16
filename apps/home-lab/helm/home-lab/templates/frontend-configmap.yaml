@@ -6,7 +6,7 @@ metadata:
     {{- include "home-lab.labels" . | nindent 4 }}
 data:
   config.js: |
-    const API_URL = '{{ .Values.frontend.apiUrl }}';
+    const API_URL = '{{ .Values.frontend.pathPrefix }}/api';
   nginx.conf: |
     server {
         listen 80;
@@ -16,6 +16,17 @@ data:
 
         location = {{ .Values.frontend.pathPrefix }} {
             return 301 {{ .Values.frontend.pathPrefix }}/;
+        }
+
+        # Proxy interne au cluster vers le service backend — le navigateur ne
+        # joint jamais le backend directement, peu importe comment il atteint
+        # le frontend (IP LAN, Tailscale, nom DNS...).
+        location {{ .Values.frontend.pathPrefix }}/api/ {
+            proxy_pass http://{{ include "home-lab.fullname" . }}-backend:{{ .Values.backend.port }}/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
         }
 
         location {{ .Values.frontend.pathPrefix }}/ {

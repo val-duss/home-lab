@@ -93,9 +93,6 @@ frontend:
     pullPolicy: Always
   replicas: 1
   port: 80
-  # URL visible depuis le navigateur pour joindre le backend
-  # (l'ingress controller est exposé sur le port 8080 en externe)
-  apiUrl: "http://192.168.1.247:8080/app/home-lab/api"
   # Préfixe de chemin pour servir le frontend (ex: /app/home-lab)
   pathPrefix: "/app/home-lab"
   resources:
@@ -116,10 +113,14 @@ service:
     port: 80
 
 # ── Ingress ───────────────────────────────────────────────────────────────────
-# Front et back partagent le même host, distingués par chemin (comme todo-list).
+# Seul le frontend est exposé à l'extérieur du cluster. Le backend n'a plus
+# d'ingress : le nginx du frontend proxy les appels /api vers le service backend
+# en interne au cluster (voir frontend-configmap.yaml), donc peu importe l'adresse
+# réseau utilisée par le navigateur pour joindre le frontend (IP LAN, Tailscale,
+# nom DNS...) — seule cette adresse-là doit être joignable, le reste reste interne.
 # host vide : règle "catch-all" accessible directement via l'IP du LoadBalancer
-# de l'ingress controller (192.168.1.247) — Kubernetes n'accepte pas une IP
-# comme spec.rules[].host, seul un nom DNS y est autorisé.
+# de l'ingress controller — Kubernetes n'accepte pas une IP comme
+# spec.rules[].host, seul un nom DNS y est autorisé.
 ingress:
   enabled: true
   className: "nginx"
@@ -127,10 +128,4 @@ ingress:
   frontend:
     path: "/app/home-lab"
     annotations: {}
-  backend:
-    # Le préfixe est retiré avant transmission au backend (routes FastAPI à la racine).
-    path: "/app/home-lab/api"
-    annotations:
-      nginx.ingress.kubernetes.io/use-regex: "true"
-      nginx.ingress.kubernetes.io/rewrite-target: /$2
   tls: []
