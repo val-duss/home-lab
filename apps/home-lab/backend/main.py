@@ -66,11 +66,16 @@ class TodoUpdate(BaseModel):
 class WishlistItemCreate(BaseModel):
     name: str
     amount: float
+    priority: int = 2
+    account_id: Optional[int] = None
 
 
 class WishlistItemUpdate(BaseModel):
     name: Optional[str] = None
     amount: Optional[float] = None
+    priority: Optional[int] = None
+    account_id: Optional[int] = None
+    clear_account: bool = False
 
 
 class AccountCreate(BaseModel):
@@ -302,8 +307,15 @@ def serialize_wishlist_item(item: models.WishlistItem) -> dict:
         "id": item.id,
         "name": item.name,
         "amount": item.amount,
+        "priority": item.priority,
+        "account": {"id": item.account.id, "name": item.account.name} if item.account else None,
         "created_at": item.created_at.isoformat() if item.created_at else None,
     }
+
+
+def _validate_priority(priority: int) -> None:
+    if priority not in (1, 2, 3):
+        raise HTTPException(status_code=400, detail="La priorité doit être 1, 2 ou 3")
 
 
 @app.get("/wishlist")
@@ -321,7 +333,13 @@ def create_wishlist_item(
         raise HTTPException(status_code=400, detail="Nom requis")
     if data.amount < 0:
         raise HTTPException(status_code=400, detail="Le montant ne peut pas être négatif")
-    item = models.WishlistItem(name=name, amount=data.amount)
+    _validate_priority(data.priority)
+    if data.account_id is not None and not db.get(models.Account, data.account_id):
+        raise HTTPException(status_code=404, detail="Compte introuvable")
+
+    item = models.WishlistItem(
+        name=name, amount=data.amount, priority=data.priority, account_id=data.account_id
+    )
     db.add(item)
     db.commit()
     db.refresh(item)
@@ -344,6 +362,15 @@ def update_wishlist_item(
         if data.amount < 0:
             raise HTTPException(status_code=400, detail="Le montant ne peut pas être négatif")
         item.amount = data.amount
+    if data.priority is not None:
+        _validate_priority(data.priority)
+        item.priority = data.priority
+    if data.clear_account:
+        item.account_id = None
+    elif data.account_id is not None:
+        if not db.get(models.Account, data.account_id):
+            raise HTTPException(status_code=404, detail="Compte introuvable")
+        item.account_id = data.account_id
     db.commit()
     db.refresh(item)
     return serialize_wishlist_item(item)
@@ -402,10 +429,36 @@ def serialize_stock(stock: models.StockHolding) -> dict:
     }
 
 
+def record_balance_history(db: Session, account: models.Account) -> None:
+    db.add(
+        models.BalanceHistory(
+            account_id=account.id, balance=account.balance, currency=account.currency
+        )
+    )
+
+
 @app.get("/finance/accounts")
 def list_accounts(db: Session = Depends(get_db), _: None = Depends(require_session)):
     accounts = db.query(models.Account).order_by(models.Account.created_at.desc()).all()
     return [serialize_account(a) for a in accounts]
+
+
+@app.get("/finance/accounts/{account_id}/history")
+def get_account_history(
+    account_id: int, db: Session = Depends(get_db), _: None = Depends(require_session)
+):
+    if not db.get(models.Account, account_id):
+        raise HTTPException(status_code=404, detail="Compte introuvable")
+    points = (
+        db.query(models.BalanceHistory)
+        .filter(models.BalanceHistory.account_id == account_id)
+        .order_by(models.BalanceHistory.recorded_at.asc())
+        .all()
+    )
+    return [
+        {"balance": p.balance, "currency": p.currency, "recorded_at": p.recorded_at.isoformat()}
+        for p in points
+    ]
 
 
 @app.post("/finance/accounts", status_code=201)
@@ -422,6 +475,8 @@ def create_account(
         source="manual",
     )
     db.add(account)
+    db.flush()
+    record_balance_history(db, account)
     db.commit()
     db.refresh(account)
     return serialize_account(account)
@@ -449,6 +504,7 @@ def update_account(
         account.kind = data.kind
     if data.balance is not None:
         account.balance = data.balance
+        record_balance_history(db, account)
     db.commit()
     db.refresh(account)
     return serialize_account(account)
@@ -572,6 +628,8 @@ async def finance_link_callback(ref: str, db: Session = Depends(get_db)):
             last_synced_at=datetime.now(timezone.utc),
         )
         db.add(account)
+        db.flush()
+        record_balance_history(db, account)
     db.commit()
 
     return "<p>Compte(s) bancaire(s) lié(s) avec succès. Tu peux fermer cette page.</p>"
@@ -590,6 +648,7 @@ async def finance_sync(db: Session = Depends(get_db), _: None = Depends(require_
         if balances:
             account.balance = float(balances[0]["balanceAmount"]["amount"])
             account.currency = balances[0]["balanceAmount"]["currency"]
+            record_balance_history(db, account)
         account.last_synced_at = datetime.now(timezone.utc)
         updated.append(account.id)
     db.commit()

@@ -43,6 +43,10 @@ class WishlistItem(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
+    # Priorité de financement : 1 = basse, 2 = moyenne, 3 = haute
+    priority = Column(Integer, nullable=False, default=2)
+    account_id = Column(Integer, ForeignKey("accounts.id"), nullable=True)
+    account = relationship("Account")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
@@ -58,6 +62,15 @@ class Account(Base):
     external_account_id = Column(String, nullable=True, unique=True)
     last_synced_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class BalanceHistory(Base):
+    __tablename__ = "balance_history"
+    id = Column(Integer, primary_key=True, index=True)
+    account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False)
+    balance = Column(Float, nullable=False)
+    currency = Column(String, nullable=False, default="EUR")
+    recorded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class StockHolding(Base):

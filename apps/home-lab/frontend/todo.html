@@ -42,6 +42,14 @@
       <form id="wishlist-form" class="todo-form">
         <input type="text" id="wishlist-name" placeholder="Article" required />
         <input type="number" id="wishlist-amount" placeholder="Montant (€)" step="0.01" min="0" required />
+        <select id="wishlist-account">
+          <option value="">Compte à financer (optionnel)</option>
+        </select>
+        <select id="wishlist-priority">
+          <option value="1">Priorité basse</option>
+          <option value="2" selected>Priorité moyenne</option>
+          <option value="3">Priorité haute</option>
+        </select>
         <button type="submit">Ajouter</button>
       </form>
       <ul id="wishlist-list" class="todo-list"></ul>

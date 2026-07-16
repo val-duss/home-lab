@@ -11,10 +11,51 @@
   const institutionSelect = document.getElementById("institution-select");
   const errorEl = document.getElementById("finance-error");
 
+  const editingBalance = new Set();
+  const expandedHistory = new Set();
+  const historyCache = {};
+
   function formatAmount(value, currency) {
     return new Intl.NumberFormat("fr-FR", { style: "currency", currency: currency || "EUR" }).format(
       value
     );
+  }
+
+  function renderHistoryChart(points) {
+    if (!points || points.length === 0) {
+      return '<p class="muted">Pas encore d\'historique.</p>';
+    }
+    if (points.length === 1) {
+      return `<p class="muted">Un seul point pour l'instant : ${formatAmount(points[0].balance, points[0].currency)}</p>`;
+    }
+
+    const width = 480;
+    const height = 120;
+    const padding = 24;
+    const balances = points.map((p) => p.balance);
+    const min = Math.min(...balances);
+    const max = Math.max(...balances);
+    const range = max - min || 1;
+    const stepX = (width - padding * 2) / (points.length - 1);
+
+    const coords = points.map((p, i) => {
+      const x = padding + i * stepX;
+      const y = height - padding - ((p.balance - min) / range) * (height - padding * 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+
+    const first = points[0];
+    const last = points[points.length - 1];
+
+    return `
+      <svg viewBox="0 0 ${width} ${height}" class="history-svg" preserveAspectRatio="xMidYMid meet">
+        <polyline points="${coords.join(" ")}" fill="none" stroke="currentColor" stroke-width="2" />
+      </svg>
+      <div class="history-range">
+        <span>${new Date(first.recorded_at).toLocaleDateString("fr-FR")} : ${formatAmount(first.balance, first.currency)}</span>
+        <span>${new Date(last.recorded_at).toLocaleDateString("fr-FR")} : ${formatAmount(last.balance, last.currency)}</span>
+      </div>
+    `;
   }
 
   function renderAccounts(accounts) {
@@ -31,17 +72,35 @@
           a.source === "gocardless"
             ? '<span class="chip chip-label">synchronisé</span>'
             : "";
-        return `
+        const canEdit = a.source !== "gocardless";
+        const isEditing = editingBalance.has(a.id);
+        const isExpanded = expandedHistory.has(a.id);
+
+        const balanceCell = isEditing
+          ? `<input type="number" step="0.01" class="balance-edit-input" data-id="${a.id}" value="${a.balance}" />
+             <button class="balance-save" data-id="${a.id}">✓</button>
+             <button class="balance-cancel" data-id="${a.id}">✕</button>`
+          : `<span class="chip">${formatAmount(a.balance, a.currency)}</span>
+             ${canEdit ? `<button class="account-edit" data-id="${a.id}" aria-label="Modifier le solde">✏️</button>` : ""}`;
+
+        const accountRow = `
           <li class="todo-item" data-id="${a.id}">
             <span class="todo-text">${a.name}</span>
             <span class="todo-tags">
               <span class="chip chip-category">${kindLabel}</span>
               ${sourceBadge}
-              <span class="chip">${formatAmount(a.balance, a.currency)}</span>
+              ${balanceCell}
             </span>
+            <button class="history-toggle" data-id="${a.id}">${isExpanded ? "Masquer" : "Historique"}</button>
             <button class="todo-delete account-delete" aria-label="Supprimer">✕</button>
           </li>
         `;
+
+        const historyRow = isExpanded
+          ? `<li class="history-row">${renderHistoryChart(historyCache[a.id])}</li>`
+          : "";
+
+        return accountRow + historyRow;
       })
       .join("");
 
@@ -110,11 +169,71 @@
   });
 
   accountsList.addEventListener("click", async (e) => {
-    if (!e.target.classList.contains("account-delete")) return;
-    const item = e.target.closest(".todo-item");
-    if (!item) return;
-    await apiFetch(`/finance/accounts/${item.dataset.id}`, { method: "DELETE" });
-    await loadAccounts();
+    const target = e.target;
+
+    if (target.classList.contains("account-delete")) {
+      const item = target.closest(".todo-item");
+      await apiFetch(`/finance/accounts/${item.dataset.id}`, { method: "DELETE" });
+      await loadAccounts();
+      return;
+    }
+
+    if (target.classList.contains("account-edit")) {
+      editingBalance.add(Number(target.dataset.id));
+      await loadAccounts();
+      return;
+    }
+
+    if (target.classList.contains("balance-cancel")) {
+      editingBalance.delete(Number(target.dataset.id));
+      await loadAccounts();
+      return;
+    }
+
+    if (target.classList.contains("balance-save")) {
+      const id = Number(target.dataset.id);
+      const input = document.querySelector(`.balance-edit-input[data-id="${id}"]`);
+      const value = Number(input.value);
+      if (Number.isNaN(value)) return;
+
+      errorEl.textContent = "";
+      try {
+        const res = await apiFetch(`/finance/accounts/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ balance: value }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          errorEl.textContent = data.detail || "Impossible de modifier le solde.";
+          return;
+        }
+        editingBalance.delete(id);
+        delete historyCache[id];
+        if (expandedHistory.has(id)) {
+          const histRes = await apiFetch(`/finance/accounts/${id}/history`);
+          historyCache[id] = await histRes.json();
+        }
+        await loadAccounts();
+      } catch {
+        errorEl.textContent = "Impossible de modifier le solde.";
+      }
+      return;
+    }
+
+    if (target.classList.contains("history-toggle")) {
+      const id = Number(target.dataset.id);
+      if (expandedHistory.has(id)) {
+        expandedHistory.delete(id);
+      } else {
+        expandedHistory.add(id);
+        if (!historyCache[id]) {
+          const res = await apiFetch(`/finance/accounts/${id}/history`);
+          historyCache[id] = await res.json();
+        }
+      }
+      await loadAccounts();
+    }
   });
 
   document.getElementById("stock-form").addEventListener("submit", async (e) => {
