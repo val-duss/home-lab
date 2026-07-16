@@ -59,6 +59,16 @@ class TodoUpdate(BaseModel):
     labels: Optional[List[str]] = None
 
 
+class WishlistItemCreate(BaseModel):
+    name: str
+    amount: float
+
+
+class WishlistItemUpdate(BaseModel):
+    name: Optional[str] = None
+    amount: Optional[float] = None
+
+
 def require_session(request: Request) -> None:
     token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
     if not token or not auth.verify_session_token(token):
@@ -246,6 +256,69 @@ def delete_todo(todo_id: int, db: Session = Depends(get_db), _: None = Depends(r
     if not todo:
         raise HTTPException(status_code=404, detail="Tâche introuvable")
     db.delete(todo)
+    db.commit()
+
+
+def serialize_wishlist_item(item: models.WishlistItem) -> dict:
+    return {
+        "id": item.id,
+        "name": item.name,
+        "amount": item.amount,
+        "created_at": item.created_at.isoformat() if item.created_at else None,
+    }
+
+
+@app.get("/wishlist")
+def list_wishlist(db: Session = Depends(get_db), _: None = Depends(require_session)):
+    items = db.query(models.WishlistItem).order_by(models.WishlistItem.created_at.desc()).all()
+    return [serialize_wishlist_item(i) for i in items]
+
+
+@app.post("/wishlist", status_code=201)
+def create_wishlist_item(
+    data: WishlistItemCreate, db: Session = Depends(get_db), _: None = Depends(require_session)
+):
+    name = data.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Nom requis")
+    if data.amount < 0:
+        raise HTTPException(status_code=400, detail="Le montant ne peut pas être négatif")
+    item = models.WishlistItem(name=name, amount=data.amount)
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return serialize_wishlist_item(item)
+
+
+@app.patch("/wishlist/{item_id}")
+def update_wishlist_item(
+    item_id: int,
+    data: WishlistItemUpdate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_session),
+):
+    item = db.query(models.WishlistItem).filter(models.WishlistItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Article introuvable")
+    if data.name is not None:
+        item.name = data.name.strip()
+    if data.amount is not None:
+        if data.amount < 0:
+            raise HTTPException(status_code=400, detail="Le montant ne peut pas être négatif")
+        item.amount = data.amount
+    db.commit()
+    db.refresh(item)
+    return serialize_wishlist_item(item)
+
+
+@app.delete("/wishlist/{item_id}", status_code=204)
+def delete_wishlist_item(
+    item_id: int, db: Session = Depends(get_db), _: None = Depends(require_session)
+):
+    item = db.query(models.WishlistItem).filter(models.WishlistItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Article introuvable")
+    db.delete(item)
     db.commit()
 
 

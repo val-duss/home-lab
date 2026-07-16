@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -36,3 +36,11 @@ class Todo(Base):
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     category = relationship("Category", back_populates="todos")
     labels = relationship("Label", secondary=todo_labels, back_populates="todos")
+
+
+class WishlistItem(Base):
+    __tablename__ = "wishlist_items"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    amount = Column(Float, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

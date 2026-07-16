@@ -50,6 +50,74 @@
       .join("");
   }
 
+  const wishlistList = document.getElementById("wishlist-list");
+  const wishlistTotal = document.getElementById("wishlist-total");
+
+  function formatAmount(value) {
+    return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value);
+  }
+
+  function renderWishlist(items) {
+    if (items.length === 0) {
+      wishlistList.innerHTML = '<li class="muted">Aucun article.</li>';
+      wishlistTotal.textContent = "";
+      return;
+    }
+
+    wishlistList.innerHTML = items
+      .map(
+        (item) => `
+          <li class="todo-item" data-id="${item.id}">
+            <span class="todo-text">${item.name}</span>
+            <span class="todo-tags"><span class="chip chip-category">${formatAmount(item.amount)}</span></span>
+            <button class="todo-delete wishlist-delete" aria-label="Supprimer">✕</button>
+          </li>
+        `
+      )
+      .join("");
+
+    const total = items.reduce((sum, item) => sum + item.amount, 0);
+    wishlistTotal.textContent = `Total : ${formatAmount(total)}`;
+  }
+
+  async function loadWishlist() {
+    const res = await apiFetch("/wishlist");
+    renderWishlist(await res.json());
+  }
+
+  document.getElementById("wishlist-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const nameInput = document.getElementById("wishlist-name");
+    const amountInput = document.getElementById("wishlist-amount");
+    const name = nameInput.value.trim();
+    const amount = Number(amountInput.value);
+
+    if (!name || Number.isNaN(amount) || amount < 0) return;
+
+    errorEl.textContent = "";
+    try {
+      const res = await apiFetch("/wishlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, amount }),
+      });
+      if (!res.ok) throw new Error();
+      nameInput.value = "";
+      amountInput.value = "";
+      await loadWishlist();
+    } catch {
+      errorEl.textContent = "Impossible d'ajouter cet article.";
+    }
+  });
+
+  wishlistList.addEventListener("click", async (e) => {
+    if (!e.target.classList.contains("wishlist-delete")) return;
+    const item = e.target.closest(".todo-item");
+    if (!item) return;
+    await apiFetch(`/wishlist/${item.dataset.id}`, { method: "DELETE" });
+    await loadWishlist();
+  });
+
   async function loadCategories() {
     const res = await apiFetch("/categories");
     categories = await res.json();
@@ -135,6 +203,7 @@
     try {
       await loadCategories();
       await loadTodos();
+      await loadWishlist();
     } catch {
       errorEl.textContent = "Impossible de charger la todo-list.";
     }

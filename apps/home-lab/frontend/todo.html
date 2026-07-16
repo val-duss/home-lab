@@ -37,6 +37,17 @@
       <ul id="todo-list" class="todo-list"></ul>
     </section>
 
+    <section class="wishlist-section">
+      <h2>Wishlist</h2>
+      <form id="wishlist-form" class="todo-form">
+        <input type="text" id="wishlist-name" placeholder="Article" required />
+        <input type="number" id="wishlist-amount" placeholder="Montant (€)" step="0.01" min="0" required />
+        <button type="submit">Ajouter</button>
+      </form>
+      <ul id="wishlist-list" class="todo-list"></ul>
+      <p id="wishlist-total" class="muted"></p>
+    </section>
+
     <p id="todo-error" class="error"></p>
   </main>
 

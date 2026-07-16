@@ -269,6 +269,15 @@ section h2 {
   text-decoration: underline;
 }
 
+.news-item.read {
+  background: #fafafa;
+}
+
+.news-item.read a {
+  color: #888;
+  font-weight: 400;
+}
+
 .news-meta {
   margin-top: 0.25rem;
   font-size: 0.85rem;
