@@ -3,7 +3,8 @@
 Portail d'accueil protégé par un code d'accès, listant plusieurs mini-applications :
 
 - **Calendrier** : événements d'un compte Google Calendar (OAuth2)
-- **Todo-list** : tâches avec catégories (gérées) et labels (libres)
+- **Todo-list** : tâches avec catégories (gérées) et labels (libres), plus une wishlist
+  (articles avec un montant, total calculé automatiquement)
 - **Électricité** : page vide pour l'instant
 - **Actualités** : agrégateur RSS multi-thématiques (actualité générale, F1, tech, finance,
   international), sans compte requis

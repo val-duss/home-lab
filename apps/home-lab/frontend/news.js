@@ -8,6 +8,22 @@
   const listEl = document.getElementById("news-list");
   const errorEl = document.getElementById("news-error");
 
+  const READ_LINKS_KEY = "news_read_links";
+
+  function getReadLinks() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(READ_LINKS_KEY)) || []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  function markLinkAsRead(link) {
+    const readLinks = getReadLinks();
+    readLinks.add(link);
+    localStorage.setItem(READ_LINKS_KEY, JSON.stringify([...readLinks]));
+  }
+
   let newsByCategory = {};
   let categories = [];
   let activeCategory = null;
@@ -27,12 +43,15 @@
       listEl.innerHTML = '<li class="muted">Aucun article.</li>';
       return;
     }
+
+    const readLinks = getReadLinks();
     listEl.innerHTML = articles
       .map((a) => {
         const date = a.published ? new Date(a.published).toLocaleString("fr-FR") : "";
+        const isRead = readLinks.has(a.link);
         return `
-          <li class="news-item">
-            <a href="${a.link}" target="_blank" rel="noopener noreferrer">${a.title}</a>
+          <li class="news-item ${isRead ? "read" : ""}">
+            <a href="${a.link}" target="_blank" rel="noopener noreferrer" data-link="${a.link}">${a.title}</a>
             <div class="news-meta">${a.source}${date ? " · " + date : ""}</div>
           </li>
         `;
@@ -46,6 +65,13 @@
     activeCategory = btn.dataset.key;
     renderTabs();
     renderArticles();
+  });
+
+  listEl.addEventListener("click", (e) => {
+    const link = e.target.closest("a[data-link]");
+    if (!link) return;
+    markLinkAsRead(link.dataset.link);
+    link.closest(".news-item").classList.add("read");
   });
 
   (async function init() {
