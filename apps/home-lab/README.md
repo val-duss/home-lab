@@ -8,9 +8,11 @@ Portail d'accueil protégé par un code d'accès, listant plusieurs mini-applica
 - **Actualités** : agrégateur RSS multi-thématiques (actualité générale, F1, tech, finance,
   international), sans compte requis
 
-- **backend/** : API FastAPI (Python) — code d'accès + session JWT, OAuth Google Calendar,
+- **backend/** : API FastAPI (Python) — code PIN + session JWT, OAuth Google Calendar,
   todo-list (SQLite), agrégation RSS.
-- **frontend/** : pages statiques servies par nginx, appelle le backend via `config.js`.
+- **frontend/** : pages statiques servies par nginx, appelle le backend via une URL relative
+  (`config.js`) proxyée en interne par nginx vers le service backend — voir
+  [Architecture réseau](#architecture-réseau) ci-dessous.
 
 ## Dev local
 
@@ -30,6 +32,17 @@ kubectl apply -f argocd/application.yaml
 ```
 
 Voir `helm/home-lab/values.yaml` pour la configuration (images, ingress, ressources).
+
+### Architecture réseau
+
+Seul le **frontend** a un Ingress. Le navigateur ne parle jamais directement au backend : le
+nginx du frontend proxy en interne (`location /app/home-lab/api/` → service `home-lab-backend`,
+résolu par le DNS du cluster) les appels API vers le backend. Et `config.js` utilise une URL
+**relative** (`/app/home-lab/api`), pas une IP en dur.
+
+Conséquence : peu importe l'adresse réseau utilisée pour joindre le frontend (IP LAN, IP
+Tailscale, nom DNS...), les appels API suivent automatiquement la même origine — il n'y a plus
+besoin que le backend soit lui-même joignable depuis l'extérieur du cluster.
 
 ### Secrets à surcharger en prod
 
@@ -71,20 +84,19 @@ consultation quotidienne du calendrier fonctionne ensuite normalement via l'URL 
    - URI de redirection autorisée : `http://localhost:8000/calendar/oauth-callback`
    - Récupérer le **Client ID** et le **Client Secret**
 
-2. **Renseigner les valeurs** `backend.google.clientId` / `backend.google.clientSecret` (et
-   `backend.auth.accessCode`) dans le déploiement (ArgoCD Parameters, pas dans le values.yaml
-   commité).
+2. **Renseigner les valeurs** `backend.google.clientId` / `backend.google.clientSecret` dans le
+   déploiement (ArgoCD Parameters, pas dans le values.yaml commité).
 
 3. **Port-forward le backend** :
    ```bash
    kubectl port-forward -n app svc/home-lab-backend 8000:8000
    ```
 
-4. **Obtenir un token de session** :
+4. **Obtenir un token de session** (avec ton code PIN à 6 chiffres) :
    ```bash
    curl -X POST http://localhost:8000/auth/access \
      -H "Content-Type: application/json" \
-     -d '{"code":"<ton-code-d-acces>"}'
+     -d '{"pin":"<ton-pin>"}'
    ```
 
 5. **Récupérer l'URL de consentement Google** :
