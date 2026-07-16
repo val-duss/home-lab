@@ -6,14 +6,14 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: default
+  project: home-lab
   source:
     repoURL: https://github.com/val-duss/home-lab.git
     targetRevision: main
     path: apps/home-lab/helm/home-lab
   destination:
     server: https://kubernetes.default.svc
-    namespace: home-lab
+    namespace: app
   syncPolicy:
     automated:
       prune: true
