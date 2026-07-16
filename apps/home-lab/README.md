@@ -1,10 +1,16 @@
 # home-lab (app)
 
-Portail d'accueil protégé par un code d'accès, listant plusieurs mini-applications.
-La première application est un calendrier qui affiche les événements d'un compte Google Calendar.
+Portail d'accueil protégé par un code d'accès, listant plusieurs mini-applications :
 
-- **backend/** : API FastAPI (Python) — code d'accès + session JWT, OAuth Google Calendar.
-- **frontend/** : pages statiques servies par nginx (portail + calendrier), appelle le backend via `config.js`.
+- **Calendrier** : événements d'un compte Google Calendar (OAuth2)
+- **Todo-list** : tâches avec catégories (gérées) et labels (libres)
+- **Électricité** : page vide pour l'instant
+- **Actualités** : agrégateur RSS multi-thématiques (actualité générale, F1, tech, finance,
+  international), sans compte requis
+
+- **backend/** : API FastAPI (Python) — code d'accès + session JWT, OAuth Google Calendar,
+  todo-list (SQLite), agrégation RSS.
+- **frontend/** : pages statiques servies par nginx, appelle le backend via `config.js`.
 
 ## Dev local
 
@@ -75,3 +81,14 @@ consultation quotidienne du calendrier fonctionne ensuite normalement via l'URL 
 
 7. Le calendrier est maintenant accessible normalement via l'app (IP LAN / ingress), sans repasser
    par cette procédure — sauf si le refresh token est un jour révoqué côté Google.
+
+### Modifier les sources d'actualités
+
+La liste des flux RSS par thématique vit dans `helm/home-lab/values.yaml` sous
+`backend.news.sources` (une ConfigMap générée à partir de cette valeur, montée sans `subPath` —
+donc un `helm upgrade` / sync ArgoCD suffit, pas besoin de rebuild d'image ni de redémarrage
+manuel du pod, le changement est pris en compte au prochain appel, sous 1 minute).
+
+Chaque thématique a une clé, un `label` affiché dans l'app, et une liste de sources
+`{name, url}` (flux RSS ou Atom). En dev local, le fichier équivalent est
+`apps/home-lab/news_sources.json` (monté dans `docker-compose.yml`).

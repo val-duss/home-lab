@@ -224,3 +224,46 @@ section h2 {
   font-size: 1rem;
   color: #c0392b;
 }
+
+.tab-chip {
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.tab-chip.active {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.news-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.news-item {
+  padding: 0.75rem;
+  border: 1px solid #eee;
+  border-radius: 6px;
+}
+
+.news-item a {
+  font-weight: 600;
+  color: inherit;
+  text-decoration: none;
+}
+
+.news-item a:hover {
+  text-decoration: underline;
+}
+
+.news-meta {
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: #888;
+}
