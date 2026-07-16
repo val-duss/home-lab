@@ -50,6 +50,18 @@ spec:
               value: {{ .Values.backend.google.calendarId | quote }}
             - name: NEWS_SOURCES_FILE
               value: "/app/config/news_sources.json"
+            - name: GOCARDLESS_SECRET_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "home-lab.fullname" . }}
+                  key: gocardless-secret-id
+            - name: GOCARDLESS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "home-lab.fullname" . }}
+                  key: gocardless-secret-key
+            - name: GOCARDLESS_REDIRECT_URI
+              value: {{ .Values.backend.gocardless.redirectUri | quote }}
           livenessProbe:
             httpGet:
               path: /health

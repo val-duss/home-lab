@@ -1,5 +1,8 @@
+import secrets
+from datetime import datetime, timezone
 from typing import List, Optional
 
+import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
@@ -7,6 +10,7 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 import auth
+import gocardless
 import google_calendar as gcal
 import models
 import news
@@ -67,6 +71,40 @@ class WishlistItemCreate(BaseModel):
 class WishlistItemUpdate(BaseModel):
     name: Optional[str] = None
     amount: Optional[float] = None
+
+
+class AccountCreate(BaseModel):
+    name: str
+    kind: str = "courant"
+    balance: float = 0.0
+    currency: str = "EUR"
+
+
+class AccountUpdate(BaseModel):
+    name: Optional[str] = None
+    kind: Optional[str] = None
+    balance: Optional[float] = None
+
+
+class StockHoldingCreate(BaseModel):
+    name: str
+    ticker: Optional[str] = None
+    quantity: float
+    purchase_price: float
+    current_price: float
+    currency: str = "EUR"
+
+
+class StockHoldingUpdate(BaseModel):
+    name: Optional[str] = None
+    ticker: Optional[str] = None
+    quantity: Optional[float] = None
+    purchase_price: Optional[float] = None
+    current_price: Optional[float] = None
+
+
+class LinkBankRequest(BaseModel):
+    institution_id: str
 
 
 def require_session(request: Request) -> None:
@@ -336,3 +374,223 @@ def news_articles(category: Optional[str] = None, _: None = Depends(require_sess
             raise HTTPException(status_code=404, detail="Catégorie inconnue")
         return {category: news.get_category_articles(category, sources[category]["sources"])}
     return {key: news.get_category_articles(key, val["sources"]) for key, val in sources.items()}
+
+
+def serialize_account(account: models.Account) -> dict:
+    return {
+        "id": account.id,
+        "name": account.name,
+        "kind": account.kind,
+        "balance": account.balance,
+        "currency": account.currency,
+        "source": account.source,
+        "institution_name": account.institution_name,
+        "last_synced_at": account.last_synced_at.isoformat() if account.last_synced_at else None,
+    }
+
+
+def serialize_stock(stock: models.StockHolding) -> dict:
+    return {
+        "id": stock.id,
+        "name": stock.name,
+        "ticker": stock.ticker,
+        "quantity": stock.quantity,
+        "purchase_price": stock.purchase_price,
+        "current_price": stock.current_price,
+        "currency": stock.currency,
+        "value": round(stock.quantity * stock.current_price, 2),
+    }
+
+
+@app.get("/finance/accounts")
+def list_accounts(db: Session = Depends(get_db), _: None = Depends(require_session)):
+    accounts = db.query(models.Account).order_by(models.Account.created_at.desc()).all()
+    return [serialize_account(a) for a in accounts]
+
+
+@app.post("/finance/accounts", status_code=201)
+def create_account(
+    data: AccountCreate, db: Session = Depends(get_db), _: None = Depends(require_session)
+):
+    if data.kind not in ("courant", "livret"):
+        raise HTTPException(status_code=400, detail="Type de compte invalide")
+    account = models.Account(
+        name=data.name.strip(),
+        kind=data.kind,
+        balance=data.balance,
+        currency=data.currency,
+        source="manual",
+    )
+    db.add(account)
+    db.commit()
+    db.refresh(account)
+    return serialize_account(account)
+
+
+@app.patch("/finance/accounts/{account_id}")
+def update_account(
+    account_id: int,
+    data: AccountUpdate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_session),
+):
+    account = db.query(models.Account).filter(models.Account.id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Compte introuvable")
+    if account.source == "gocardless" and data.balance is not None:
+        raise HTTPException(
+            status_code=400, detail="Solde géré automatiquement par la synchronisation bancaire"
+        )
+    if data.name is not None:
+        account.name = data.name.strip()
+    if data.kind is not None:
+        if data.kind not in ("courant", "livret"):
+            raise HTTPException(status_code=400, detail="Type de compte invalide")
+        account.kind = data.kind
+    if data.balance is not None:
+        account.balance = data.balance
+    db.commit()
+    db.refresh(account)
+    return serialize_account(account)
+
+
+@app.delete("/finance/accounts/{account_id}", status_code=204)
+def delete_account(
+    account_id: int, db: Session = Depends(get_db), _: None = Depends(require_session)
+):
+    account = db.query(models.Account).filter(models.Account.id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Compte introuvable")
+    db.delete(account)
+    db.commit()
+
+
+@app.get("/finance/stocks")
+def list_stocks(db: Session = Depends(get_db), _: None = Depends(require_session)):
+    stocks = db.query(models.StockHolding).order_by(models.StockHolding.created_at.desc()).all()
+    return [serialize_stock(s) for s in stocks]
+
+
+@app.post("/finance/stocks", status_code=201)
+def create_stock(
+    data: StockHoldingCreate, db: Session = Depends(get_db), _: None = Depends(require_session)
+):
+    stock = models.StockHolding(**data.model_dump())
+    db.add(stock)
+    db.commit()
+    db.refresh(stock)
+    return serialize_stock(stock)
+
+
+@app.patch("/finance/stocks/{stock_id}")
+def update_stock(
+    stock_id: int,
+    data: StockHoldingUpdate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_session),
+):
+    stock = db.query(models.StockHolding).filter(models.StockHolding.id == stock_id).first()
+    if not stock:
+        raise HTTPException(status_code=404, detail="Position introuvable")
+    for field, value in data.model_dump(exclude_none=True).items():
+        setattr(stock, field, value)
+    db.commit()
+    db.refresh(stock)
+    return serialize_stock(stock)
+
+
+@app.delete("/finance/stocks/{stock_id}", status_code=204)
+def delete_stock(stock_id: int, db: Session = Depends(get_db), _: None = Depends(require_session)):
+    stock = db.query(models.StockHolding).filter(models.StockHolding.id == stock_id).first()
+    if not stock:
+        raise HTTPException(status_code=404, detail="Position introuvable")
+    db.delete(stock)
+    db.commit()
+
+
+@app.get("/finance/institutions")
+async def finance_institutions(country: str = "FR", _: None = Depends(require_session)):
+    try:
+        return await gocardless.list_institutions(country)
+    except httpx.HTTPError as e:
+        raise HTTPException(
+            status_code=502, detail=f"Impossible de joindre GoCardless : {e}"
+        )
+
+
+@app.post("/finance/link")
+async def finance_link(data: LinkBankRequest, _: None = Depends(require_session)):
+    reference = secrets.token_hex(16)
+    try:
+        requisition = await gocardless.create_requisition(data.institution_id, reference)
+    except httpx.HTTPError as e:
+        raise HTTPException(
+            status_code=502, detail=f"Impossible de joindre GoCardless : {e}"
+        )
+    storage.save_requisition_ref(reference, requisition["id"])
+    return {"link": requisition["link"]}
+
+
+@app.get("/finance/link-callback", response_class=HTMLResponse)
+async def finance_link_callback(ref: str, db: Session = Depends(get_db)):
+    requisition_id = storage.get_requisition_id(ref)
+    if not requisition_id:
+        return "<p>Lien invalide ou expiré.</p>"
+
+    requisition = await gocardless.get_requisition(requisition_id)
+    if requisition.get("status") != "LN":
+        return f"<p>Statut de connexion : {requisition.get('status')}. Réessaie si besoin.</p>"
+
+    for account_id in requisition.get("accounts", []):
+        existing = (
+            db.query(models.Account).filter(models.Account.external_account_id == account_id).first()
+        )
+        if existing:
+            continue
+        try:
+            details = await gocardless.get_account_details(account_id)
+            balance_data = await gocardless.get_account_balance(account_id)
+        except Exception:
+            continue
+
+        account_name = (
+            details.get("account", {}).get("name")
+            or details.get("account", {}).get("iban")
+            or "Compte lié"
+        )
+        balances = balance_data.get("balances", [])
+        amount = float(balances[0]["balanceAmount"]["amount"]) if balances else 0.0
+        currency = balances[0]["balanceAmount"]["currency"] if balances else "EUR"
+
+        account = models.Account(
+            name=account_name,
+            kind="courant",
+            balance=amount,
+            currency=currency,
+            source="gocardless",
+            external_account_id=account_id,
+            last_synced_at=datetime.now(timezone.utc),
+        )
+        db.add(account)
+    db.commit()
+
+    return "<p>Compte(s) bancaire(s) lié(s) avec succès. Tu peux fermer cette page.</p>"
+
+
+@app.post("/finance/sync")
+async def finance_sync(db: Session = Depends(get_db), _: None = Depends(require_session)):
+    accounts = db.query(models.Account).filter(models.Account.source == "gocardless").all()
+    updated = []
+    for account in accounts:
+        try:
+            balance_data = await gocardless.get_account_balance(account.external_account_id)
+        except Exception:
+            continue
+        balances = balance_data.get("balances", [])
+        if balances:
+            account.balance = float(balances[0]["balanceAmount"]["amount"])
+            account.currency = balances[0]["balanceAmount"]["currency"]
+        account.last_synced_at = datetime.now(timezone.utc)
+        updated.append(account.id)
+    db.commit()
+    return {"updated": updated}

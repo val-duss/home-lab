@@ -35,6 +35,16 @@ backend:
     # sauf pour localhost : la liaison initiale se fait donc via `kubectl port-forward`.
     redirectUri: "http://localhost:8000/calendar/oauth-callback"
     calendarId: "primary"
+  # Identifiants GoCardless Bank Account Data (agrégateur PSD2, https://bankaccountdata.gocardless.com)
+  # pour la synchronisation des comptes/livrets dans l'app Finances. Voir
+  # apps/home-lab/README.md pour la procédure de création de compte et de liaison bancaire.
+  gocardless:
+    secretId: ""
+    secretKey: ""
+    # Même contrainte que Google : HTTPS requis sauf localhost, liaison via port-forward.
+    # Un requisition GoCardless expire après ~90 jours (contrainte PSD2, pas notre code) :
+    # il faudra relier périodiquement chaque compte.
+    redirectUri: "http://localhost:8000/finance/link-callback"
   # Sources RSS de l'app Actualités, groupées par thématique. Modifiable ici sans
   # rebuild d'image : le fichier de config est monté depuis une ConfigMap (pas de
   # subPath), donc le backend prend en compte le changement sans redémarrage, dans

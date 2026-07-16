@@ -8,9 +8,11 @@ Portail d'accueil protégé par un code d'accès, listant plusieurs mini-applica
 - **Électricité** : page vide pour l'instant
 - **Actualités** : agrégateur RSS multi-thématiques (actualité générale, F1, tech, finance,
   international), sans compte requis
+- **Finances** : comptes/livrets (saisie manuelle ou synchronisés via GoCardless Bank Account
+  Data) et actions en direct (saisie manuelle, PEA/CTO non couverts par les agrégateurs bancaires)
 
 - **backend/** : API FastAPI (Python) — code PIN + session JWT, OAuth Google Calendar,
-  todo-list (SQLite), agrégation RSS.
+  todo-list (SQLite), agrégation RSS, synchronisation bancaire GoCardless.
 - **frontend/** : pages statiques servies par nginx, appelle le backend via une URL relative
   (`config.js`) proxyée en interne par nginx vers le service backend — voir
   [Architecture réseau](#architecture-réseau) ci-dessous.
@@ -52,6 +54,7 @@ Parameters de l'Application ArgoCD (ou un `values-secret.yaml` non commité) :
 
 - `backend.auth.jwtSecret` — clé de signature des sessions
 - `backend.google.clientId` / `backend.google.clientSecret` — voir ci-dessous
+- `backend.gocardless.secretId` / `backend.gocardless.secretKey` — voir ci-dessous
 
 ### Code PIN d'accès
 
@@ -112,6 +115,57 @@ consultation quotidienne du calendrier fonctionne ensuite normalement via l'URL 
 
 7. Le calendrier est maintenant accessible normalement via l'app (IP LAN / ingress), sans repasser
    par cette procédure — sauf si le refresh token est un jour révoqué côté Google.
+
+### Synchroniser les comptes bancaires (GoCardless Bank Account Data)
+
+Agrégateur PSD2 gratuit (jusqu'à un certain volume), aucun identifiant bancaire stocké côté
+serveur — l'authentification se fait via le portail officiel de ta banque. Seuls les
+comptes/livrets sont couverts ; les actions en direct (PEA/CTO) ne le sont pas, d'où la saisie
+manuelle pour cette partie.
+
+**Comme pour Google, GoCardless exige un redirect HTTPS sauf pour `localhost`** : la liaison de
+chaque banque se fait donc en local via `kubectl port-forward`. Contrainte supplémentaire propre
+à la réglementation PSD2 (indépendante de notre code) : l'autorisation donnée à une banque expire
+après ~90 jours, il faut donc relier périodiquement (relancer la procédure ci-dessous).
+
+1. **Créer un compte** sur [bankaccountdata.gocardless.com](https://bankaccountdata.gocardless.com/)
+   (offre "Bank Account Data", gratuite jusqu'à un certain nombre de connexions/mois) et récupérer
+   `secret_id` / `secret_key` dans les paramètres du compte.
+
+2. **Renseigner les valeurs** `backend.gocardless.secretId` / `backend.gocardless.secretKey` dans
+   le déploiement (ArgoCD Parameters, pas dans le values.yaml commité).
+
+3. **Port-forward le backend** :
+   ```bash
+   kubectl port-forward -n app svc/home-lab-backend 8000:8000
+   ```
+
+4. **Obtenir un token de session**, puis **lister les banques disponibles** :
+   ```bash
+   curl -X POST http://localhost:8000/auth/access \
+     -H "Content-Type: application/json" -d '{"pin":"<ton-pin>"}'
+   # -> access_token
+
+   curl http://localhost:8000/finance/institutions?country=FR \
+     -H "Authorization: Bearer <token>"
+   # -> repère l'"id" de ta banque
+   ```
+
+5. **Lancer la liaison** :
+   ```bash
+   curl -X POST http://localhost:8000/finance/link \
+     -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
+     -d '{"institution_id":"<id-de-la-banque>"}'
+   # -> {"link": "https://..."}
+   ```
+
+6. Ouvrir le `link` renvoyé dans un navigateur, s'authentifier auprès de la banque, accepter —
+   redirection vers `localhost:8000/finance/link-callback`, qui crée automatiquement un compte par
+   compte bancaire détecté (solde récupéré à cet instant).
+
+7. Utiliser ensuite `POST /finance/sync` (bouton à ajouter plus tard côté UI, ou via curl avec le
+   token) pour rafraîchir les soldes des comptes synchronisés. Les comptes créés manuellement ne
+   sont jamais touchés par la synchronisation.
 
 ### Modifier les sources d'actualités
 
