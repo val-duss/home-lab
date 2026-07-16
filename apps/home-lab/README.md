@@ -4,12 +4,13 @@ Portail d'accueil protégé par un code d'accès, listant plusieurs mini-applica
 
 - **Calendrier** : événements d'un compte Google Calendar (OAuth2)
 - **Todo-list** : tâches avec catégories (gérées) et labels (libres), plus une wishlist
-  (articles avec un montant, total calculé automatiquement)
+  (articles avec un montant, un compte à financer optionnel et une priorité sur 3 niveaux)
 - **Électricité** : page vide pour l'instant
 - **Actualités** : agrégateur RSS multi-thématiques (actualité générale, F1, tech, finance,
   international), sans compte requis
-- **Finances** : comptes/livrets (saisie manuelle ou synchronisés via GoCardless Bank Account
-  Data) et actions en direct (saisie manuelle, PEA/CTO non couverts par les agrégateurs bancaires)
+- **Finances** : comptes/livrets (saisie manuelle, éditable, avec historique des soldes en
+  courbe ; ou synchronisés via GoCardless Bank Account Data, solde en lecture seule) et actions
+  en direct (saisie manuelle, PEA/CTO non couverts par les agrégateurs bancaires)
 
 - **backend/** : API FastAPI (Python) — code PIN + session JWT, OAuth Google Calendar,
   todo-list (SQLite), agrégation RSS, synchronisation bancaire GoCardless.

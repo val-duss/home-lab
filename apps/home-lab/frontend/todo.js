@@ -52,6 +52,10 @@
 
   const wishlistList = document.getElementById("wishlist-list");
   const wishlistTotal = document.getElementById("wishlist-total");
+  const wishlistAccountSelect = document.getElementById("wishlist-account");
+
+  const PRIORITY_LABELS = { 1: "Basse", 2: "Moyenne", 3: "Haute" };
+  const PRIORITY_CLASSES = { 1: "priority-low", 2: "priority-medium", 3: "priority-high" };
 
   function formatAmount(value) {
     return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value);
@@ -65,15 +69,22 @@
     }
 
     wishlistList.innerHTML = items
-      .map(
-        (item) => `
+      .map((item) => {
+        const accountBadge = item.account
+          ? `<span class="chip chip-label">${item.account.name}</span>`
+          : "";
+        return `
           <li class="todo-item" data-id="${item.id}">
             <span class="todo-text">${item.name}</span>
-            <span class="todo-tags"><span class="chip chip-category">${formatAmount(item.amount)}</span></span>
+            <span class="todo-tags">
+              <span class="chip ${PRIORITY_CLASSES[item.priority]}">${PRIORITY_LABELS[item.priority]}</span>
+              ${accountBadge}
+              <span class="chip chip-category">${formatAmount(item.amount)}</span>
+            </span>
             <button class="todo-delete wishlist-delete" aria-label="Supprimer">✕</button>
           </li>
-        `
-      )
+        `;
+      })
       .join("");
 
     const total = items.reduce((sum, item) => sum + item.amount, 0);
@@ -85,10 +96,20 @@
     renderWishlist(await res.json());
   }
 
+  async function loadWishlistAccounts() {
+    const res = await apiFetch("/finance/accounts");
+    const accounts = await res.json();
+    wishlistAccountSelect.innerHTML =
+      '<option value="">Compte à financer (optionnel)</option>' +
+      accounts.map((a) => `<option value="${a.id}">${a.name}</option>`).join("");
+  }
+
   document.getElementById("wishlist-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const nameInput = document.getElementById("wishlist-name");
     const amountInput = document.getElementById("wishlist-amount");
+    const priority = Number(document.getElementById("wishlist-priority").value);
+    const accountId = wishlistAccountSelect.value ? Number(wishlistAccountSelect.value) : null;
     const name = nameInput.value.trim();
     const amount = Number(amountInput.value);
 
@@ -99,11 +120,13 @@
       const res = await apiFetch("/wishlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, amount }),
+        body: JSON.stringify({ name, amount, priority, account_id: accountId }),
       });
       if (!res.ok) throw new Error();
       nameInput.value = "";
       amountInput.value = "";
+      wishlistAccountSelect.value = "";
+      document.getElementById("wishlist-priority").value = "2";
       await loadWishlist();
     } catch {
       errorEl.textContent = "Impossible d'ajouter cet article.";
@@ -203,6 +226,7 @@
     try {
       await loadCategories();
       await loadTodos();
+      await loadWishlistAccounts();
       await loadWishlist();
     } catch {
       errorEl.textContent = "Impossible de charger la todo-list.";
