@@ -16,6 +16,8 @@ spec:
       labels:
         {{- include "home-lab.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: frontend
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/frontend-configmap.yaml") . | sha256sum }}
     spec:
       {{- include "home-lab.imagePullSecrets" . | nindent 6 }}
       containers:
