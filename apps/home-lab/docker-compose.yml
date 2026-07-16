@@ -8,7 +8,6 @@ services:
       - backend-data:/app/data
       - ./news_sources.json:/app/config/news_sources.json:ro
     environment:
-      - ACCESS_CODE=change-me
       - JWT_SECRET=change-this-secret-in-production
       - GOOGLE_CLIENT_ID=
       - GOOGLE_CLIENT_SECRET=

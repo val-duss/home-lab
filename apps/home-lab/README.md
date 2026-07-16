@@ -36,9 +36,27 @@ Voir `helm/home-lab/values.yaml` pour la configuration (images, ingress, ressour
 Ne pas laisser les valeurs par défaut de `values.yaml` telles quelles. À surcharger via les
 Parameters de l'Application ArgoCD (ou un `values-secret.yaml` non commité) :
 
-- `backend.auth.accessCode` — le code demandé à la première connexion
 - `backend.auth.jwtSecret` — clé de signature des sessions
 - `backend.google.clientId` / `backend.google.clientSecret` — voir ci-dessous
+
+### Code PIN d'accès
+
+Le portail est protégé par un code PIN à 6 chiffres (pas un secret Helm — il est géré
+dynamiquement par le backend et persisté dans `/app/data/auth_state.json` sur le PVC) :
+
+- Valeur par défaut : `000000`
+- **Changement obligatoire** à la première connexion (l'app force la saisie d'un nouveau code
+  avant d'afficher le portail)
+- **Verrouillage** après 4 tentatives échouées : `/auth/access` renvoie alors `423` quel que
+  soit le code saisi, y compris le bon — il n'existe **aucune route HTTP pour débloquer**
+- **Déblocage uniquement via accès machine** :
+  ```bash
+  kubectl exec -n app deploy/home-lab-backend -- sh
+  cat /app/data/auth_state.json
+  # Éditer le fichier pour remettre "locked": false et "failed_attempts": 0
+  # (garder pin_hash/pin_salt pour conserver le code choisi), ou supprimer le
+  # fichier pour tout réinitialiser (retour au code par défaut 000000).
+  ```
 
 ### Connecter Google Calendar (procédure unique)
 

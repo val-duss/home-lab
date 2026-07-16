@@ -1,22 +1,20 @@
-import os
 from typing import List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
 import auth
 import google_calendar as gcal
 import models
 import news
+import pin_auth
 import storage
 from database import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
-
-ACCESS_CODE = os.getenv("ACCESS_CODE", "change-me")
 
 app = FastAPI(title="Home Lab API")
 
@@ -29,8 +27,19 @@ app.add_middleware(
 )
 
 
-class AccessCodeRequest(BaseModel):
-    code: str
+class AccessRequest(BaseModel):
+    pin: str
+
+
+class ChangePinRequest(BaseModel):
+    new_pin: str
+
+    @field_validator("new_pin")
+    @classmethod
+    def validate_new_pin(cls, v: str) -> str:
+        if not v.isdigit() or len(v) != 6:
+            raise ValueError("Le code doit contenir exactement 6 chiffres")
+        return v
 
 
 class CategoryCreate(BaseModel):
@@ -67,10 +76,32 @@ def root():
 
 
 @app.post("/auth/access")
-def check_access_code(data: AccessCodeRequest):
-    if data.code != ACCESS_CODE:
-        raise HTTPException(status_code=401, detail="Code incorrect")
-    return {"access_token": auth.create_session_token()}
+def check_access_code(data: AccessRequest):
+    if pin_auth.is_locked():
+        raise HTTPException(
+            status_code=423,
+            detail="Application verrouillée. Déblocage uniquement via accès machine.",
+        )
+
+    ok, must_change = pin_auth.verify_pin(data.pin)
+    if not ok:
+        if pin_auth.is_locked():
+            raise HTTPException(
+                status_code=423,
+                detail="Trop de tentatives. Application verrouillée, déblocage uniquement via accès machine.",
+            )
+        raise HTTPException(
+            status_code=401,
+            detail=f"Code incorrect. Tentatives restantes : {pin_auth.remaining_attempts()}",
+        )
+
+    return {"access_token": auth.create_session_token(), "must_change": must_change}
+
+
+@app.post("/auth/change-pin")
+def change_pin(data: ChangePinRequest, _: None = Depends(require_session)):
+    pin_auth.change_pin(data.new_pin)
+    return {"ok": True}
 
 
 @app.get("/calendar/status")

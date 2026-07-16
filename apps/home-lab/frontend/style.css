@@ -17,22 +17,29 @@ h1 {
   text-align: center;
 }
 
-#gate-form {
+.gate-form {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 1rem;
 }
 
-#gate-form input {
+.gate-form input {
   flex: 1;
   padding: 0.5rem;
   font-size: 1rem;
 }
 
-#gate-form button {
+.gate-form button {
   padding: 0.5rem 1rem;
   font-size: 1rem;
   cursor: pointer;
+}
+
+.pin-input {
+  text-align: center;
+  letter-spacing: 0.5em;
+  font-size: 1.2rem;
 }
 
 .error {
