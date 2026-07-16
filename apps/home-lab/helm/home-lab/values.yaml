@@ -2,11 +2,12 @@ nameOverride: ""
 fullnameOverride: ""
 
 # ── Image pull secret (registre privé, ex: GHCR) ───────────────────────────────
-# Référence un secret docker-registry existant dans le cluster :
-# imagePullSecrets:
-#   - name: ghcr-creds
-imagePullSecrets: []
-# Ou laisse le chart créer le secret à partir d'identifiants :
+# Référence un secret docker-registry existant dans le cluster (créé au préalable
+# avec `kubectl create secret docker-registry ghcr-creds ...`).
+imagePullSecrets:
+  - name: ghcr-creds
+# Ou laisse le chart créer le secret à partir d'identifiants (déconseillé si ce
+# values.yaml est versionné en clair) :
 # imageCredentials:
 #   registry: ghcr.io
 #   username: ""
