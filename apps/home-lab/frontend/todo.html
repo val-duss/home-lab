@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Todo-list — Home Lab</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <a href="index.html" class="back-link">&larr; Retour</a>
+    <h1>Todo-list</h1>
+
+    <section class="todo-categories">
+      <h2>Catégories</h2>
+      <div id="category-chips" class="chip-row"></div>
+      <form id="category-form" class="inline-form">
+        <input type="text" id="category-input" placeholder="Nouvelle catégorie" required />
+        <button type="submit">Ajouter</button>
+      </form>
+    </section>
+
+    <section class="todo-new">
+      <h2>Nouvelle tâche</h2>
+      <form id="todo-form" class="todo-form">
+        <input type="text" id="todo-text" placeholder="Description" required />
+        <select id="todo-category">
+          <option value="">Sans catégorie</option>
+        </select>
+        <input type="text" id="todo-labels" placeholder="Labels (séparés par des virgules)" />
+        <button type="submit">Ajouter</button>
+      </form>
+    </section>
+
+    <section class="todo-list-section">
+      <h2>Tâches</h2>
+      <ul id="todo-list" class="todo-list"></ul>
+    </section>
+
+    <p id="todo-error" class="error"></p>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="session.js"></script>
+  <script src="todo.js"></script>
+</body>
+</html>

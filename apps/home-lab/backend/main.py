@@ -1,13 +1,19 @@
 import os
+from typing import List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 import auth
 import google_calendar as gcal
+import models
 import storage
+from database import engine, get_db
+
+models.Base.metadata.create_all(bind=engine)
 
 ACCESS_CODE = os.getenv("ACCESS_CODE", "change-me")
 
@@ -24,6 +30,23 @@ app.add_middleware(
 
 class AccessCodeRequest(BaseModel):
     code: str
+
+
+class CategoryCreate(BaseModel):
+    name: str
+
+
+class TodoCreate(BaseModel):
+    text: str
+    category_id: Optional[int] = None
+    labels: List[str] = []
+
+
+class TodoUpdate(BaseModel):
+    text: Optional[str] = None
+    done: Optional[bool] = None
+    category_id: Optional[int] = None
+    labels: Optional[List[str]] = None
 
 
 def require_session(request: Request) -> None:
@@ -85,3 +108,110 @@ async def calendar_events(_: None = Depends(require_session)):
     refreshed = await gcal.refresh_access_token(refresh_token)
     events = await gcal.list_events(refreshed["access_token"])
     return {"events": events}
+
+
+def get_or_create_label(db: Session, name: str) -> models.Label:
+    name = name.strip()
+    label = db.query(models.Label).filter(models.Label.name == name).first()
+    if not label:
+        label = models.Label(name=name)
+        db.add(label)
+        db.flush()
+    return label
+
+
+def serialize_todo(todo: models.Todo) -> dict:
+    return {
+        "id": todo.id,
+        "text": todo.text,
+        "done": todo.done,
+        "created_at": todo.created_at.isoformat() if todo.created_at else None,
+        "category": {"id": todo.category.id, "name": todo.category.name} if todo.category else None,
+        "labels": [{"id": label.id, "name": label.name} for label in todo.labels],
+    }
+
+
+@app.get("/categories")
+def list_categories(db: Session = Depends(get_db), _: None = Depends(require_session)):
+    categories = db.query(models.Category).order_by(models.Category.name).all()
+    return [{"id": c.id, "name": c.name} for c in categories]
+
+
+@app.post("/categories", status_code=201)
+def create_category(
+    data: CategoryCreate, db: Session = Depends(get_db), _: None = Depends(require_session)
+):
+    name = data.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Nom requis")
+    if db.query(models.Category).filter(models.Category.name == name).first():
+        raise HTTPException(status_code=400, detail="Catégorie déjà existante")
+    category = models.Category(name=name)
+    db.add(category)
+    db.commit()
+    db.refresh(category)
+    return {"id": category.id, "name": category.name}
+
+
+@app.delete("/categories/{category_id}", status_code=204)
+def delete_category(
+    category_id: int, db: Session = Depends(get_db), _: None = Depends(require_session)
+):
+    category = db.query(models.Category).filter(models.Category.id == category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Catégorie introuvable")
+    db.delete(category)
+    db.commit()
+
+
+@app.get("/todos")
+def list_todos(db: Session = Depends(get_db), _: None = Depends(require_session)):
+    todos = db.query(models.Todo).order_by(models.Todo.created_at.desc()).all()
+    return [serialize_todo(t) for t in todos]
+
+
+@app.post("/todos", status_code=201)
+def create_todo(
+    data: TodoCreate, db: Session = Depends(get_db), _: None = Depends(require_session)
+):
+    text = data.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Texte requis")
+    todo = models.Todo(text=text, category_id=data.category_id)
+    todo.labels = [get_or_create_label(db, name) for name in data.labels if name.strip()]
+    db.add(todo)
+    db.commit()
+    db.refresh(todo)
+    return serialize_todo(todo)
+
+
+@app.patch("/todos/{todo_id}")
+def update_todo(
+    todo_id: int,
+    data: TodoUpdate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_session),
+):
+    todo = db.query(models.Todo).filter(models.Todo.id == todo_id).first()
+    if not todo:
+        raise HTTPException(status_code=404, detail="Tâche introuvable")
+    if data.text is not None:
+        todo.text = data.text.strip()
+    if data.done is not None:
+        todo.done = data.done
+    if data.category_id is not None:
+        todo.category_id = data.category_id
+    if data.labels is not None:
+        todo.labels = [get_or_create_label(db, name) for name in data.labels if name.strip()]
+    db.commit()
+    db.refresh(todo)
+    return serialize_todo(todo)
+
+
+@app.delete("/todos/{todo_id}", status_code=204)
+def delete_todo(todo_id: int, db: Session = Depends(get_db), _: None = Depends(require_session)):
+    todo = db.query(models.Todo).filter(models.Todo.id == todo_id).first()
+    if not todo:
+        raise HTTPException(status_code=404, detail="Tâche introuvable")
+    db.delete(todo)
+    db.commit()
