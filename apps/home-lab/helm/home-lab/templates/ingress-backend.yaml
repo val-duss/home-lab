@@ -2,10 +2,10 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "home-lab.fullname" . }}
+  name: {{ include "home-lab.fullname" . }}-backend
   labels:
     {{- include "home-lab.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
+  {{- with .Values.ingress.backend.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -18,21 +18,11 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   rules:
-    - host: {{ .Values.ingress.frontend.host }}
+    - host: {{ .Values.ingress.host }}
       http:
         paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ include "home-lab.fullname" . }}-frontend
-                port:
-                  name: http
-    - host: {{ .Values.ingress.backend.host }}
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
+          - path: {{ .Values.ingress.backend.path }}(/|$)(.*)
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: {{ include "home-lab.fullname" . }}-backend
