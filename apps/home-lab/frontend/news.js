@@ -8,22 +8,6 @@
   const listEl = document.getElementById("news-list");
   const errorEl = document.getElementById("news-error");
 
-  const READ_LINKS_KEY = "news_read_links";
-
-  function getReadLinks() {
-    try {
-      return new Set(JSON.parse(localStorage.getItem(READ_LINKS_KEY)) || []);
-    } catch {
-      return new Set();
-    }
-  }
-
-  function markLinkAsRead(link) {
-    const readLinks = getReadLinks();
-    readLinks.add(link);
-    localStorage.setItem(READ_LINKS_KEY, JSON.stringify([...readLinks]));
-  }
-
   let newsByCategory = {};
   let categories = [];
   let activeCategory = null;
@@ -44,7 +28,7 @@
       return;
     }
 
-    const readLinks = getReadLinks();
+    const readLinks = getReadNewsLinks();
     listEl.innerHTML = articles
       .map((a) => {
         const date = a.published ? new Date(a.published).toLocaleString("fr-FR") : "";
@@ -70,7 +54,7 @@
   listEl.addEventListener("click", (e) => {
     const link = e.target.closest("a[data-link]");
     if (!link) return;
-    markLinkAsRead(link.dataset.link);
+    markNewsLinkAsRead(link.dataset.link);
     link.closest(".news-item").classList.add("read");
   });
 

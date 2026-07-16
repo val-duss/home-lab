@@ -83,3 +83,16 @@ class StockHolding(Base):
     current_price = Column(Float, nullable=False)
     currency = Column(String, nullable=False, default="EUR")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class Note(Base):
+    __tablename__ = "notes"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    content = Column(String, nullable=False, default="")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )

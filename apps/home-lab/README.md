@@ -11,9 +11,13 @@ Portail d'accueil protégé par un code d'accès, listant plusieurs mini-applica
 - **Finances** : comptes/livrets (saisie manuelle, éditable, avec historique des soldes en
   courbe ; ou synchronisés via GoCardless Bank Account Data, solde en lecture seule) et actions
   en direct (saisie manuelle, PEA/CTO non couverts par les agrégateurs bancaires)
+- **Notes** : prise de notes rapide par sujet, copie en un clic (presse-papier)
+
+Le portail affiche les applications 2 par ligne, avec une pastille sur Actualités indiquant le
+nombre d'articles du jour pas encore consultés (suivi client, `localStorage`).
 
 - **backend/** : API FastAPI (Python) — code PIN + session JWT, OAuth Google Calendar,
-  todo-list (SQLite), agrégation RSS, synchronisation bancaire GoCardless.
+  todo-list (SQLite), agrégation RSS, synchronisation bancaire GoCardless, notes.
 - **frontend/** : pages statiques servies par nginx, appelle le backend via une URL relative
   (`config.js`) proxyée en interne par nginx vers le service backend — voir
   [Architecture réseau](#architecture-réseau) ci-dessous.
@@ -178,3 +182,14 @@ manuel du pod, le changement est pris en compte au prochain appel, sous 1 minute
 Chaque thématique a une clé, un `label` affiché dans l'app, et une liste de sources
 `{name, url}` (flux RSS ou Atom). En dev local, le fichier équivalent est
 `apps/home-lab/news_sources.json` (monté dans `docker-compose.yml`).
+
+### Schéma SQLite et migrations
+
+`Base.metadata.create_all()` (appelé au démarrage) crée les tables manquantes, mais **ne modifie
+jamais une table déjà existante** : quand un modèle gagne une colonne (ex. `WishlistItem.priority`
+et `.account_id`), une base déjà peuplée ne la reçoit jamais toute seule, et le premier insert
+plante avec "no such column". `database.run_migrations()` (appelée juste après `create_all()`)
+compense ça au démarrage : elle compare les colonnes du modèle à celles réellement présentes dans
+chaque table SQLite existante et fait un `ALTER TABLE ADD COLUMN` pour celles qui manquent. Léger,
+pas d'Alembic — mais à garder en tête : ça gère l'ajout de colonnes nullable, pas les renommages,
+suppressions, ou changements de type.

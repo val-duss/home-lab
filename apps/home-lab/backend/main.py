@@ -16,9 +16,10 @@ import models
 import news
 import pin_auth
 import storage
-from database import engine, get_db
+from database import engine, get_db, run_migrations
 
 models.Base.metadata.create_all(bind=engine)
+run_migrations()
 
 app = FastAPI(title="Home Lab API")
 
@@ -110,6 +111,16 @@ class StockHoldingUpdate(BaseModel):
 
 class LinkBankRequest(BaseModel):
     institution_id: str
+
+
+class NoteCreate(BaseModel):
+    title: str
+    content: str = ""
+
+
+class NoteUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
 
 
 def require_session(request: Request) -> None:
@@ -653,3 +664,64 @@ async def finance_sync(db: Session = Depends(get_db), _: None = Depends(require_
         updated.append(account.id)
     db.commit()
     return {"updated": updated}
+
+
+def serialize_note(note: models.Note) -> dict:
+    return {
+        "id": note.id,
+        "title": note.title,
+        "content": note.content,
+        "created_at": note.created_at.isoformat() if note.created_at else None,
+        "updated_at": note.updated_at.isoformat() if note.updated_at else None,
+    }
+
+
+@app.get("/notes")
+def list_notes(db: Session = Depends(get_db), _: None = Depends(require_session)):
+    notes = db.query(models.Note).order_by(models.Note.updated_at.desc()).all()
+    return [serialize_note(n) for n in notes]
+
+
+@app.post("/notes", status_code=201)
+def create_note(
+    data: NoteCreate, db: Session = Depends(get_db), _: None = Depends(require_session)
+):
+    title = data.title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Titre requis")
+    note = models.Note(title=title, content=data.content)
+    db.add(note)
+    db.commit()
+    db.refresh(note)
+    return serialize_note(note)
+
+
+@app.patch("/notes/{note_id}")
+def update_note(
+    note_id: int,
+    data: NoteUpdate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_session),
+):
+    note = db.query(models.Note).filter(models.Note.id == note_id).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note introuvable")
+    if data.title is not None:
+        title = data.title.strip()
+        if not title:
+            raise HTTPException(status_code=400, detail="Titre requis")
+        note.title = title
+    if data.content is not None:
+        note.content = data.content
+    db.commit()
+    db.refresh(note)
+    return serialize_note(note)
+
+
+@app.delete("/notes/{note_id}", status_code=204)
+def delete_note(note_id: int, db: Session = Depends(get_db), _: None = Depends(require_session)):
+    note = db.query(models.Note).filter(models.Note.id == note_id).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note introuvable")
+    db.delete(note)
+    db.commit()

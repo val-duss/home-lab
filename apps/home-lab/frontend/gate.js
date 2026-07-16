@@ -5,15 +5,48 @@
   const changePinStep = document.getElementById("change-pin-step");
   const errorEl = document.getElementById("gate-error");
 
+  async function renderNewsBadge() {
+    const badge = document.getElementById("news-badge");
+    if (!badge) return;
+    try {
+      const res = await apiFetch("/news");
+      const newsByCategory = await res.json();
+      const readLinks = getReadNewsLinks();
+      const todayStr = new Date().toDateString();
+
+      let count = 0;
+      for (const articles of Object.values(newsByCategory)) {
+        for (const article of articles) {
+          if (!article.published_ts) continue;
+          const articleDate = new Date(article.published_ts * 1000).toDateString();
+          if (articleDate === todayStr && !readLinks.has(article.link)) {
+            count++;
+          }
+        }
+      }
+
+      if (count > 0) {
+        badge.textContent = count > 99 ? "99+" : String(count);
+        badge.hidden = false;
+      } else {
+        badge.hidden = true;
+      }
+    } catch {
+      badge.hidden = true;
+    }
+  }
+
   if (getToken()) {
     gate.hidden = true;
     portal.hidden = false;
+    renderNewsBadge();
     return;
   }
 
   function showPortal() {
     gate.hidden = true;
     portal.hidden = false;
+    renderNewsBadge();
   }
 
   function showChangePinStep() {
