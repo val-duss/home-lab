@@ -53,6 +53,8 @@ spec:
               value: {{ .Values.backend.google.redirectUri | quote }}
             - name: GOOGLE_CALENDAR_ID
               value: {{ .Values.backend.google.calendarId | quote }}
+            - name: NEWS_SOURCES_FILE
+              value: "/app/config/news_sources.json"
           livenessProbe:
             httpGet:
               path: /health
@@ -68,14 +70,19 @@ spec:
             periodSeconds: 10
           resources:
             {{- toYaml .Values.backend.resources | nindent 12 }}
-          {{- if .Values.persistence.enabled }}
           volumeMounts:
+            {{- if .Values.persistence.enabled }}
             - name: data
               mountPath: /app/data
-          {{- end }}
-      {{- if .Values.persistence.enabled }}
+            {{- end }}
+            - name: news-sources
+              mountPath: /app/config
       volumes:
+        {{- if .Values.persistence.enabled }}
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "home-lab.fullname" . }}-data
-      {{- end }}
+        {{- end }}
+        - name: news-sources
+          configMap:
+            name: {{ include "home-lab.fullname" . }}-news-sources

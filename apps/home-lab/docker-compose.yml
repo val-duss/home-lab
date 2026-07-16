@@ -6,12 +6,14 @@ services:
     volumes:
       - ./backend:/app
       - backend-data:/app/data
+      - ./news_sources.json:/app/config/news_sources.json:ro
     environment:
       - ACCESS_CODE=change-me
       - JWT_SECRET=change-this-secret-in-production
       - GOOGLE_CLIENT_ID=
       - GOOGLE_CLIENT_SECRET=
       - GOOGLE_REDIRECT_URI=http://localhost:8000/calendar/oauth-callback
+      - NEWS_SOURCES_FILE=/app/config/news_sources.json
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
@@ -22,11 +24,14 @@ services:
       - ./frontend/index.html:/usr/share/nginx/html/index.html:ro
       - ./frontend/calendar.html:/usr/share/nginx/html/calendar.html:ro
       - ./frontend/todo.html:/usr/share/nginx/html/todo.html:ro
+      - ./frontend/elec.html:/usr/share/nginx/html/elec.html:ro
+      - ./frontend/news.html:/usr/share/nginx/html/news.html:ro
       - ./frontend/style.css:/usr/share/nginx/html/style.css:ro
       - ./frontend/session.js:/usr/share/nginx/html/session.js:ro
       - ./frontend/gate.js:/usr/share/nginx/html/gate.js:ro
       - ./frontend/calendar.js:/usr/share/nginx/html/calendar.js:ro
       - ./frontend/todo.js:/usr/share/nginx/html/todo.js:ro
+      - ./frontend/news.js:/usr/share/nginx/html/news.js:ro
       - ./frontend/config.js:/usr/share/nginx/html/config.js:ro
       - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:

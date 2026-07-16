@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "home-lab.fullname" . }}-news-sources
+  labels:
+    {{- include "home-lab.labels" . | nindent 4 }}
+data:
+  news_sources.json: |
+    {{- .Values.backend.news.sources | toJson | nindent 4 }}

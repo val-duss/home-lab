@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 import auth
 import google_calendar as gcal
 import models
+import news
 import storage
 from database import engine, get_db
 
@@ -215,3 +216,19 @@ def delete_todo(todo_id: int, db: Session = Depends(get_db), _: None = Depends(r
         raise HTTPException(status_code=404, detail="Tâche introuvable")
     db.delete(todo)
     db.commit()
+
+
+@app.get("/news/categories")
+def news_categories(_: None = Depends(require_session)):
+    sources = news.load_sources()
+    return [{"key": key, "label": val["label"]} for key, val in sources.items()]
+
+
+@app.get("/news")
+def news_articles(category: Optional[str] = None, _: None = Depends(require_session)):
+    sources = news.load_sources()
+    if category:
+        if category not in sources:
+            raise HTTPException(status_code=404, detail="Catégorie inconnue")
+        return {category: news.get_category_articles(category, sources[category]["sources"])}
+    return {key: news.get_category_articles(key, val["sources"]) for key, val in sources.items()}
