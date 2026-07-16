@@ -17,6 +17,7 @@ spec:
         {{- include "home-lab.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: frontend
     spec:
+      {{- include "home-lab.imagePullSecrets" . | nindent 6 }}
       containers:
         - name: frontend
           image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"

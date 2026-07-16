@@ -1,6 +1,17 @@
 nameOverride: ""
 fullnameOverride: ""
 
+# ── Image pull secret (registre privé, ex: GHCR) ───────────────────────────────
+# Référence un secret docker-registry existant dans le cluster :
+# imagePullSecrets:
+#   - name: ghcr-creds
+imagePullSecrets: []
+# Ou laisse le chart créer le secret à partir d'identifiants :
+# imageCredentials:
+#   registry: ghcr.io
+#   username: ""
+#   password: ""
+
 # ── Backend ───────────────────────────────────────────────────────────────────
 backend:
   image:
