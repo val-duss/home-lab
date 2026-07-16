@@ -60,10 +60,13 @@ service:
 
 # ── Ingress ───────────────────────────────────────────────────────────────────
 # Front et back partagent le même host, distingués par chemin (comme todo-list).
+# host vide : règle "catch-all" accessible directement via l'IP du LoadBalancer
+# de l'ingress controller (192.168.1.247) — Kubernetes n'accepte pas une IP
+# comme spec.rules[].host, seul un nom DNS y est autorisé.
 ingress:
   enabled: true
   className: "nginx"
-  host: "192.168.1.247"
+  host: ""
   frontend:
     path: "/app/home-lab"
     annotations: {}
