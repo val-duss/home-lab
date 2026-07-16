@@ -1,0 +1,58 @@
+nameOverride: ""
+fullnameOverride: ""
+
+# ── Backend ───────────────────────────────────────────────────────────────────
+backend:
+  image:
+    repository: ghcr.io/val-duss/home-lab-backend
+    tag: latest
+    pullPolicy: Always
+  replicas: 1
+  port: 8000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# ── Frontend ──────────────────────────────────────────────────────────────────
+frontend:
+  image:
+    repository: ghcr.io/val-duss/home-lab-frontend
+    tag: latest
+    pullPolicy: Always
+  replicas: 1
+  port: 80
+  # URL visible depuis le navigateur pour joindre le backend
+  apiUrl: "http://home-lab.example.com/api"
+  # Préfixe de chemin pour servir le frontend (ex: /app/home-lab)
+  pathPrefix: "/app/home-lab"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# ── Services ──────────────────────────────────────────────────────────────────
+service:
+  backend:
+    type: ClusterIP
+    port: 8000
+  frontend:
+    type: ClusterIP
+    port: 80
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+  frontend:
+    host: home-lab.example.com
+  backend:
+    host: api.home-lab.example.com
+  tls: []

@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "home-lab.fullname" . }}-frontend
+  labels:
+    {{- include "home-lab.labels" . | nindent 4 }}
+data:
+  config.js: |
+    const API_URL = '{{ .Values.frontend.apiUrl }}';
+  nginx.conf: |
+    server {
+        listen 80;
+        server_name _;
+        root /usr/share/nginx/html;
+        index index.html;
+
+        location = {{ .Values.frontend.pathPrefix }} {
+            return 301 {{ .Values.frontend.pathPrefix }}/;
+        }
+
+        location {{ .Values.frontend.pathPrefix }}/ {
+            alias /usr/share/nginx/html/;
+            try_files $uri $uri/ /index.html;
+        }
+
+        location / {
+            try_files $uri $uri/ =404;
+        }
+
+        location /healthz {
+            return 200 'ok';
+            add_header Content-Type text/plain;
+        }
+    }

@@ -1,0 +1,11 @@
+apiVersion: v2
+name: home-lab
+description: Home Lab app — FastAPI backend + nginx frontend
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - fastapi
+  - python
+maintainers:
+  - name: val-duss
