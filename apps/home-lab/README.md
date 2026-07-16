@@ -1,9 +1,10 @@
 # home-lab (app)
 
-Application front/back minimale, sans contenu pour l'instant — sert de socle prêt à être développé.
+Portail d'accueil protégé par un code d'accès, listant plusieurs mini-applications.
+La première application est un calendrier qui affiche les événements d'un compte Google Calendar.
 
-- **backend/** : API FastAPI (Python), expose `/health`.
-- **frontend/** : page statique servie par nginx, appelle le backend via `config.js`.
+- **backend/** : API FastAPI (Python) — code d'accès + session JWT, OAuth Google Calendar.
+- **frontend/** : pages statiques servies par nginx (portail + calendrier), appelle le backend via `config.js`.
 
 ## Dev local
 
@@ -23,3 +24,54 @@ kubectl apply -f argocd/application.yaml
 ```
 
 Voir `helm/home-lab/values.yaml` pour la configuration (images, ingress, ressources).
+
+### Secrets à surcharger en prod
+
+Ne pas laisser les valeurs par défaut de `values.yaml` telles quelles. À surcharger via les
+Parameters de l'Application ArgoCD (ou un `values-secret.yaml` non commité) :
+
+- `backend.auth.accessCode` — le code demandé à la première connexion
+- `backend.auth.jwtSecret` — clé de signature des sessions
+- `backend.google.clientId` / `backend.google.clientSecret` — voir ci-dessous
+
+### Connecter Google Calendar (procédure unique)
+
+Google **refuse les redirect URI en HTTP** sauf pour `localhost`. Comme l'app est exposée en HTTP
+sur une IP LAN, la liaison initiale doit se faire en local via `kubectl port-forward` — la
+consultation quotidienne du calendrier fonctionne ensuite normalement via l'URL habituelle.
+
+1. **Créer les identifiants OAuth** sur [Google Cloud Console](https://console.cloud.google.com/apis/credentials) :
+   - Créer un projet (ou en réutiliser un), activer l'API **Google Calendar API**
+   - Écran de consentement OAuth : type "External", ajouter ton compte Google en tant qu'utilisateur de test
+   - Identifiants > Créer des identifiants > ID client OAuth > type **Application Web**
+   - URI de redirection autorisée : `http://localhost:8000/calendar/oauth-callback`
+   - Récupérer le **Client ID** et le **Client Secret**
+
+2. **Renseigner les valeurs** `backend.google.clientId` / `backend.google.clientSecret` (et
+   `backend.auth.accessCode`) dans le déploiement (ArgoCD Parameters, pas dans le values.yaml
+   commité).
+
+3. **Port-forward le backend** :
+   ```bash
+   kubectl port-forward -n app svc/home-lab-backend 8000:8000
+   ```
+
+4. **Obtenir un token de session** :
+   ```bash
+   curl -X POST http://localhost:8000/auth/access \
+     -H "Content-Type: application/json" \
+     -d '{"code":"<ton-code-d-acces>"}'
+   ```
+
+5. **Récupérer l'URL de consentement Google** :
+   ```bash
+   curl http://localhost:8000/calendar/auth-url \
+     -H "Authorization: Bearer <token-obtenu-ci-dessus>"
+   ```
+
+6. Ouvrir l'URL renvoyée dans un navigateur, se connecter avec le compte Google, accepter — tu es
+   redirigé vers `localhost:8000/calendar/oauth-callback`, qui affiche un message de succès. Le
+   refresh token est alors stocké de façon persistante (PVC monté sur `/app/data`).
+
+7. Le calendrier est maintenant accessible normalement via l'app (IP LAN / ingress), sans repasser
+   par cette procédure — sauf si le refresh token est un jour révoqué côté Google.

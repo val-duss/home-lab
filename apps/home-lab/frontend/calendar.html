@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calendrier — Home Lab</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <a href="index.html" class="back-link">&larr; Retour</a>
+    <h1>Calendrier</h1>
+
+    <div id="connect-panel" hidden>
+      <p>Aucun calendrier Google connecté.</p>
+      <button id="connect-btn">Connecter Google Calendar</button>
+    </div>
+
+    <ul id="events-list" class="events-list"></ul>
+    <p id="calendar-error" class="error"></p>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="session.js"></script>
+  <script src="calendar.js"></script>
+</body>
+</html>
