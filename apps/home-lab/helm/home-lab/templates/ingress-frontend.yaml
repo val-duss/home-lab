@@ -18,6 +18,7 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   rules:
+    {{- if .Values.ingress.host }}
     - host: {{ .Values.ingress.host }}
       http:
         paths:
@@ -28,4 +29,15 @@ spec:
                 name: {{ include "home-lab.fullname" . }}-frontend
                 port:
                   name: http
+    {{- else }}
+    - http:
+        paths:
+          - path: {{ .Values.ingress.frontend.path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "home-lab.fullname" . }}-frontend
+                port:
+                  name: http
+    {{- end }}
 {{- end }}
