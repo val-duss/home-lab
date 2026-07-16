@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notes — Home Lab</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <a href="index.html" class="back-link">&larr; Retour</a>
+    <h1>Notes</h1>
+
+    <form id="note-form" class="note-form">
+      <input type="text" id="note-title" placeholder="Sujet" required />
+      <textarea id="note-content" placeholder="Contenu" rows="3"></textarea>
+      <button type="submit">Ajouter</button>
+    </form>
+
+    <ul id="notes-list" class="notes-list"></ul>
+    <p id="notes-error" class="error"></p>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="session.js"></script>
+  <script src="notes.js"></script>
+</body>
+</html>

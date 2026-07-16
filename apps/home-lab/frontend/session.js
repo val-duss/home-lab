@@ -20,3 +20,37 @@ async function apiFetch(path, options = {}) {
   }
   return res;
 }
+
+const NEWS_READ_LINKS_KEY = "news_read_links";
+
+function getReadNewsLinks() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(NEWS_READ_LINKS_KEY)) || []);
+  } catch {
+    return new Set();
+  }
+}
+
+function markNewsLinkAsRead(link) {
+  const readLinks = getReadNewsLinks();
+  readLinks.add(link);
+  localStorage.setItem(NEWS_READ_LINKS_KEY, JSON.stringify([...readLinks]));
+}
+
+async function copyToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  // Fallback pour contexte non sécurisé (HTTP sur IP LAN) : l'API Clipboard moderne
+  // exige HTTPS (ou localhost), execCommand reste disponible en HTTP.
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+}
