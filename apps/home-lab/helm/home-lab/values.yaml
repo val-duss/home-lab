@@ -38,7 +38,7 @@ frontend:
   replicas: 1
   port: 80
   # URL visible depuis le navigateur pour joindre le backend
-  apiUrl: "http://home-lab.example.com/api"
+  apiUrl: "http://192.168.1.247/app/home-lab/api"
   # Préfixe de chemin pour servir le frontend (ex: /app/home-lab)
   pathPrefix: "/app/home-lab"
   resources:
@@ -59,12 +59,18 @@ service:
     port: 80
 
 # ── Ingress ───────────────────────────────────────────────────────────────────
+# Front et back partagent le même host, distingués par chemin (comme todo-list).
 ingress:
-  enabled: false
+  enabled: true
   className: "nginx"
-  annotations: {}
+  host: "192.168.1.247"
   frontend:
-    host: home-lab.example.com
+    path: "/app/home-lab"
+    annotations: {}
   backend:
-    host: api.home-lab.example.com
+    # Le préfixe est retiré avant transmission au backend (routes FastAPI à la racine).
+    path: "/app/home-lab/api"
+    annotations:
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: /$2
   tls: []
