@@ -38,7 +38,8 @@ frontend:
   replicas: 1
   port: 80
   # URL visible depuis le navigateur pour joindre le backend
-  apiUrl: "http://192.168.1.247/app/home-lab/api"
+  # (l'ingress controller est exposé sur le port 8080 en externe)
+  apiUrl: "http://192.168.1.247:8080/app/home-lab/api"
   # Préfixe de chemin pour servir le frontend (ex: /app/home-lab)
   pathPrefix: "/app/home-lab"
   resources:
