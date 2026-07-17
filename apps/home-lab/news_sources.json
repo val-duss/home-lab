@@ -15,13 +15,15 @@
   "tech": {
     "label": "Tech",
     "sources": [
-      { "name": "Numerama", "url": "https://www.numerama.com/feed/" }
+      { "name": "Numerama", "url": "https://www.numerama.com/feed/" },
+      { "name": "TLDR", "url": "https://www.example.com/a-remplacer-par-le-vrai-flux-rss" }
     ]
   },
   "finance": {
     "label": "Finance",
     "sources": [
-      { "name": "Les Echos", "url": "https://www.lesechos.fr/rss/rss_une_economie.xml" }
+      { "name": "Les Echos", "url": "https://www.lesechos.fr/rss/rss_une_economie.xml" },
+      { "name": "Actionnaire", "url": "https://www.example.com/a-remplacer-par-le-vrai-flux-rss" }
     ]
   },
   "international": {

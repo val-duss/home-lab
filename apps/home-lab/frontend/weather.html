@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Météo — Home Lab</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <a href="index.html" class="back-link">&larr; Retour</a>
+    <h1>Météo</h1>
+
+    <div id="city-tabs" class="chip-row"></div>
+
+    <div id="weather-current"></div>
+    <ul id="weather-daily" class="weather-daily"></ul>
+
+    <div class="city-actions">
+      <button id="set-default-btn" type="button">Définir par défaut</button>
+      <button id="delete-city-btn" type="button">Supprimer cette ville</button>
+    </div>
+
+    <form id="city-form" class="inline-form">
+      <input type="text" id="city-name" placeholder="Ajouter une ville" required />
+      <button type="submit">Ajouter</button>
+    </form>
+
+    <p id="weather-error" class="error"></p>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="session.js"></script>
+  <script src="weather.js"></script>
+</body>
+</html>

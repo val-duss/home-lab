@@ -12,6 +12,13 @@ todo_labels = Table(
     Column("label_id", Integer, ForeignKey("labels.id"), primary_key=True),
 )
 
+note_labels = Table(
+    "note_labels",
+    Base.metadata,
+    Column("note_id", Integer, ForeignKey("notes.id"), primary_key=True),
+    Column("label_id", Integer, ForeignKey("labels.id"), primary_key=True),
+)
+
 
 class Category(Base):
     __tablename__ = "categories"
@@ -88,7 +95,7 @@ class StockHolding(Base):
 class Note(Base):
     __tablename__ = "notes"
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, nullable=False)
+    title = Column(String, nullable=True)
     content = Column(String, nullable=False, default="")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
@@ -96,3 +103,15 @@ class Note(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+    labels = relationship("Label", secondary=note_labels)
+
+
+class WeatherCity(Base):
+    __tablename__ = "weather_cities"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    country = Column(String, nullable=True)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    is_default = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

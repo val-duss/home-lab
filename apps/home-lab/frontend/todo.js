@@ -57,6 +57,8 @@
   const PRIORITY_LABELS = { 1: "Basse", 2: "Moyenne", 3: "Haute" };
   const PRIORITY_CLASSES = { 1: "priority-low", 2: "priority-medium", 3: "priority-high" };
 
+  let wishlistAccountsById = {};
+
   function formatAmount(value) {
     return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(value);
   }
@@ -73,12 +75,25 @@
         const accountBadge = item.account
           ? `<span class="chip chip-label">${item.account.name}</span>`
           : "";
+
+        let fundableBadge = "";
+        if (item.account) {
+          const account = wishlistAccountsById[item.account.id];
+          if (account) {
+            const fundable = account.balance >= item.amount;
+            fundableBadge = fundable
+              ? '<span class="chip fundable-yes" title="Finançable avec ce compte">✅</span>'
+              : '<span class="chip fundable-no" title="Solde insuffisant sur ce compte">❌</span>';
+          }
+        }
+
         return `
           <li class="todo-item" data-id="${item.id}">
             <span class="todo-text">${item.name}</span>
             <span class="todo-tags">
               <span class="chip ${PRIORITY_CLASSES[item.priority]}">${PRIORITY_LABELS[item.priority]}</span>
               ${accountBadge}
+              ${fundableBadge}
               <span class="chip chip-category">${formatAmount(item.amount)}</span>
             </span>
             <button class="todo-delete wishlist-delete" aria-label="Supprimer">✕</button>
@@ -99,6 +114,7 @@
   async function loadWishlistAccounts() {
     const res = await apiFetch("/finance/accounts");
     const accounts = await res.json();
+    wishlistAccountsById = Object.fromEntries(accounts.map((a) => [a.id, a]));
     wishlistAccountSelect.innerHTML =
       '<option value="">Compte à financer (optionnel)</option>' +
       accounts.map((a) => `<option value="${a.id}">${a.name}</option>`).join("");

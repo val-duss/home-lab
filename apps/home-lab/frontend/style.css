@@ -272,9 +272,19 @@ section h2 {
 }
 
 .news-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   padding: 0.75rem;
   border: 1px solid #eee;
   border-radius: 6px;
+  background: #fff;
+  touch-action: pan-y;
+}
+
+.news-item-body {
+  min-width: 0;
 }
 
 .news-item a {
@@ -294,6 +304,39 @@ section h2 {
 .news-item.read a {
   color: #888;
   font-weight: 400;
+}
+
+.news-item.dismissed {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
+.news-item.swipe-save-hint {
+  background: #dcfce7;
+}
+
+.news-item.swipe-dismiss-hint {
+  background: #fee2e2;
+}
+
+.news-actions {
+  display: flex;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.news-actions button {
+  border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.news-actions button.active {
+  background: #dbeafe;
+  border-color: #93c5fd;
 }
 
 .news-meta {
@@ -379,6 +422,14 @@ section h2 {
   background: #fee2e2;
 }
 
+.fundable-yes {
+  background: #dcfce7;
+}
+
+.fundable-no {
+  background: #fee2e2;
+}
+
 .note-form {
   display: flex;
   flex-direction: column;
@@ -398,6 +449,30 @@ section h2 {
   padding: 0.5rem 1rem;
   font-size: 1rem;
   cursor: pointer;
+}
+
+.note-content-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.note-content-row textarea {
+  flex: 1;
+}
+
+#dictate-btn {
+  padding: 0.5rem 0.75rem;
+  font-size: 1.2rem;
+  cursor: pointer;
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+
+#dictate-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .notes-list {
@@ -454,4 +529,82 @@ section h2 {
   padding: 0.4rem;
   font-size: 0.95rem;
   font-family: inherit;
+}
+
+.note-edit-labels {
+  width: 100%;
+  padding: 0.4rem;
+  font-size: 0.9rem;
+  margin-top: 0.4rem;
+}
+
+.weather-current-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
+
+.weather-emoji {
+  font-size: 2.5rem;
+}
+
+.weather-temp {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.weather-label {
+  color: #666;
+}
+
+.weather-wind {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.weather-daily {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  overflow-x: auto;
+}
+
+.weather-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  min-width: 90px;
+}
+
+.weather-day-date {
+  font-size: 0.8rem;
+  color: #888;
+  text-transform: capitalize;
+}
+
+.weather-day-temps {
+  font-size: 0.9rem;
+}
+
+.city-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.city-actions button {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
 }
