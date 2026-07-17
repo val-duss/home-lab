@@ -68,11 +68,17 @@ backend:
         sources:
           - name: "Numerama"
             url: "https://www.numerama.com/feed/"
+          # URL non vérifiée, à remplacer par le vrai flux RSS de TLDR.
+          - name: "TLDR"
+            url: "https://www.example.com/a-remplacer-par-le-vrai-flux-rss"
       finance:
         label: "Finance"
         sources:
           - name: "Les Echos"
             url: "https://www.lesechos.fr/rss/rss_une_economie.xml"
+          # URL non vérifiée, à remplacer par le vrai flux RSS d'Actionnaire.
+          - name: "Actionnaire"
+            url: "https://www.example.com/a-remplacer-par-le-vrai-flux-rss"
       international:
         label: "International"
         sources:

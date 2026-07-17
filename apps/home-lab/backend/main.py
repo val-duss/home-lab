@@ -16,6 +16,7 @@ import models
 import news
 import pin_auth
 import storage
+import weather
 from database import engine, get_db, run_migrations
 
 models.Base.metadata.create_all(bind=engine)
@@ -123,6 +124,10 @@ class NoteUpdate(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
     labels: Optional[List[str]] = None
+
+
+class WeatherCityCreate(BaseModel):
+    name: str
 
 
 def require_session(request: Request) -> None:
@@ -749,3 +754,93 @@ def delete_note(note_id: int, db: Session = Depends(get_db), _: None = Depends(r
         raise HTTPException(status_code=404, detail="Note introuvable")
     db.delete(note)
     db.commit()
+
+
+def serialize_city(city: models.WeatherCity) -> dict:
+    return {
+        "id": city.id,
+        "name": city.name,
+        "country": city.country,
+        "latitude": city.latitude,
+        "longitude": city.longitude,
+        "is_default": city.is_default,
+    }
+
+
+@app.get("/weather/cities")
+def list_weather_cities(db: Session = Depends(get_db), _: None = Depends(require_session)):
+    cities = db.query(models.WeatherCity).order_by(models.WeatherCity.name).all()
+    return [serialize_city(c) for c in cities]
+
+
+@app.post("/weather/cities", status_code=201)
+async def create_weather_city(
+    data: WeatherCityCreate, db: Session = Depends(get_db), _: None = Depends(require_session)
+):
+    name = data.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Nom de ville requis")
+    try:
+        geocoded = await weather.geocode_city(name)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Impossible de joindre Open-Meteo : {e}")
+    if not geocoded:
+        raise HTTPException(status_code=404, detail="Ville introuvable")
+
+    is_first = db.query(models.WeatherCity).count() == 0
+    city = models.WeatherCity(
+        name=geocoded["name"],
+        country=geocoded["country"],
+        latitude=geocoded["latitude"],
+        longitude=geocoded["longitude"],
+        is_default=is_first,
+    )
+    db.add(city)
+    db.commit()
+    db.refresh(city)
+    return serialize_city(city)
+
+
+@app.post("/weather/cities/{city_id}/default")
+def set_default_weather_city(
+    city_id: int, db: Session = Depends(get_db), _: None = Depends(require_session)
+):
+    city = db.get(models.WeatherCity, city_id)
+    if not city:
+        raise HTTPException(status_code=404, detail="Ville introuvable")
+    db.query(models.WeatherCity).update({models.WeatherCity.is_default: False})
+    city.is_default = True
+    db.commit()
+    db.refresh(city)
+    return serialize_city(city)
+
+
+@app.delete("/weather/cities/{city_id}", status_code=204)
+def delete_weather_city(
+    city_id: int, db: Session = Depends(get_db), _: None = Depends(require_session)
+):
+    city = db.query(models.WeatherCity).filter(models.WeatherCity.id == city_id).first()
+    if not city:
+        raise HTTPException(status_code=404, detail="Ville introuvable")
+    was_default = city.is_default
+    db.delete(city)
+    db.commit()
+    if was_default:
+        remaining = db.query(models.WeatherCity).first()
+        if remaining:
+            remaining.is_default = True
+            db.commit()
+
+
+@app.get("/weather/cities/{city_id}/forecast")
+async def get_weather_city_forecast(
+    city_id: int, db: Session = Depends(get_db), _: None = Depends(require_session)
+):
+    city = db.get(models.WeatherCity, city_id)
+    if not city:
+        raise HTTPException(status_code=404, detail="Ville introuvable")
+    try:
+        data = await weather.get_forecast(city.latitude, city.longitude)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Impossible de joindre Open-Meteo : {e}")
+    return weather.simplify_forecast(data)

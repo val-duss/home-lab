@@ -104,3 +104,14 @@ class Note(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
     labels = relationship("Label", secondary=note_labels)
+
+
+class WeatherCity(Base):
+    __tablename__ = "weather_cities"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    country = Column(String, nullable=True)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    is_default = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
